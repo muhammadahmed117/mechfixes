@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mechfixes/core/config/google_maps_config.dart';
+import 'package:mechfixes/services/directions_service.dart';
 import 'package:mechfixes/services/location_service.dart';
+import 'package:mechfixes/services/mechanics_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MechanicMapScreen extends StatefulWidget {
@@ -54,6 +57,9 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
   static const _primary = Color(0xFF1F3FAF);
 
   final LocationService _locationService = LocationService.instance;
+  final DirectionsService _directionsService = DirectionsService();
+  final MechanicsRepository _mechanicsRepository = MechanicsRepository.instance;
+
   GoogleMapController? _mapController;
 
   bool _isLoading = true;
@@ -63,6 +69,7 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
   LatLng? _destination;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
+  List<LatLng> _routePoints = [];
 
   @override
   void initState() {
@@ -73,6 +80,7 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
   @override
   void dispose() {
     _mapController?.dispose();
+    _directionsService.dispose();
     super.dispose();
   }
 
@@ -107,57 +115,57 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
       final userPosition = await _locationService.getCurrentPosition();
       LatLng? userLatLng;
       String? distanceLabel;
+      final polylines = <Polyline>{};
+      var routePoints = <LatLng>[];
 
       if (userPosition != null) {
         userLatLng = LatLng(userPosition.latitude, userPosition.longitude);
-        final km = _locationService.distanceInKm(
-          startLatitude: userLatLng.latitude,
-          startLongitude: userLatLng.longitude,
-          endLatitude: destLatLng.latitude,
-          endLongitude: destLatLng.longitude,
+
+        final drivingRoute = await _directionsService.fetchDrivingRoute(
+          originLatitude: userLatLng.latitude,
+          originLongitude: userLatLng.longitude,
+          destinationLatitude: destLatLng.latitude,
+          destinationLongitude: destLatLng.longitude,
         );
-        distanceLabel = _locationService.formatDistanceKm(km);
-      }
 
-      final markers = <Marker>{
-        Marker(
-          markerId: const MarkerId('mechanic'),
-          position: destLatLng,
-          infoWindow: InfoWindow(
-            title: widget.mechanicName,
-            snippet: widget.address.trim().isNotEmpty
-                ? widget.address
-                : 'Mechanic location',
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueRed,
-          ),
-        ),
-      };
-
-      final polylines = <Polyline>{};
-
-      if (userLatLng != null) {
-        markers.add(
-          Marker(
-            markerId: const MarkerId('user'),
-            position: userLatLng,
-            infoWindow: const InfoWindow(title: 'Your location'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueAzure,
+        if (drivingRoute != null) {
+          distanceLabel = drivingRoute.distanceText;
+          routePoints = drivingRoute.routePoints;
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: routePoints,
+              color: _primary,
+              width: 4,
             ),
-          ),
-        );
-
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('route'),
-            points: [userLatLng, destLatLng],
-            color: _primary,
-            width: 4,
-          ),
-        );
+          );
+        } else {
+          debugPrint(
+            '[MechanicMap] Directions API unavailable, using straight-line fallback',
+          );
+          final km = _locationService.distanceInKm(
+            startLatitude: userLatLng.latitude,
+            startLongitude: userLatLng.longitude,
+            endLatitude: destLatLng.latitude,
+            endLongitude: destLatLng.longitude,
+          );
+          distanceLabel = _locationService.formatDistanceKm(km);
+          routePoints = [userLatLng, destLatLng];
+          polylines.add(
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: routePoints,
+              color: _primary.withValues(alpha: 0.6),
+              width: 3,
+            ),
+          );
+        }
       }
+
+      final markers = await _buildMarkers(
+        userLatLng: userLatLng,
+        destination: destLatLng,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -166,11 +174,14 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
         _distanceLabel = distanceLabel;
         _markers = markers;
         _polylines = polylines;
+        _routePoints = routePoints;
         _isLoading = false;
       });
 
       await _fitCamera();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('[MechanicMap] Failed to load map data: $error');
+      debugPrint('$stackTrace');
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -179,29 +190,139 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
     }
   }
 
+  Future<Set<Marker>> _buildMarkers({
+    required LatLng destination,
+    LatLng? userLatLng,
+  }) async {
+    final markers = <Marker>{
+      Marker(
+        markerId: const MarkerId('selected_mechanic'),
+        position: destination,
+        infoWindow: InfoWindow(
+          title: widget.mechanicName,
+          snippet: widget.address.trim().isNotEmpty
+              ? widget.address
+              : 'Selected mechanic',
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ),
+    };
+
+    if (userLatLng != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('user'),
+          position: userLatLng,
+          infoWindow: const InfoWindow(title: 'Your location'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        ),
+      );
+
+      final nearbyMechanics = await _loadNearbyMechanicMarkers(
+        userLatLng: userLatLng,
+        selectedDestination: destination,
+      );
+      markers.addAll(nearbyMechanics);
+    }
+
+    return markers;
+  }
+
+  Future<Set<Marker>> _loadNearbyMechanicMarkers({
+    required LatLng userLatLng,
+    required LatLng selectedDestination,
+  }) async {
+    final markers = <Marker>{};
+
+    try {
+      final mechanics = await _mechanicsRepository.fetchVerifiedMechanics();
+      var withinRadiusCount = 0;
+
+      for (final mechanic in mechanics) {
+        if (!mechanic.hasCoordinates) continue;
+
+        final mechanicLat = mechanic.latitude!;
+        final mechanicLng = mechanic.longitude!;
+        final mechanicPosition = LatLng(mechanicLat, mechanicLng);
+
+        final isSelectedDestination = _sameCoordinate(
+          mechanicPosition,
+          selectedDestination,
+        );
+        if (isSelectedDestination) continue;
+
+        final distanceMeters = _locationService.distanceInMeters(
+          startLatitude: userLatLng.latitude,
+          startLongitude: userLatLng.longitude,
+          endLatitude: mechanicLat,
+          endLongitude: mechanicLng,
+        );
+
+        if (distanceMeters > GoogleMapsConfig.nearbyMechanicRadiusMeters) {
+          continue;
+        }
+
+        withinRadiusCount++;
+        markers.add(
+          Marker(
+            markerId: MarkerId('mechanic_${mechanic.uid}'),
+            position: mechanicPosition,
+            infoWindow: InfoWindow(
+              title: mechanic.displayName,
+              snippet: '${(distanceMeters / 1000).toStringAsFixed(1)} km away',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueOrange,
+            ),
+          ),
+        );
+      }
+
+      debugPrint(
+        '[MechanicMap] Added $withinRadiusCount mechanic markers within '
+        '${GoogleMapsConfig.nearbyMechanicRadiusMeters.toInt()} m',
+      );
+    } catch (error, stackTrace) {
+      debugPrint('[MechanicMap] Failed to load nearby mechanic markers: $error');
+      debugPrint('$stackTrace');
+    }
+
+    return markers;
+  }
+
+  bool _sameCoordinate(LatLng a, LatLng b) {
+    const tolerance = 0.00001;
+    return (a.latitude - b.latitude).abs() < tolerance &&
+        (a.longitude - b.longitude).abs() < tolerance;
+  }
+
   Future<void> _fitCamera() async {
     final controller = _mapController;
     final destination = _destination;
     if (controller == null || destination == null) return;
 
-    if (_userPosition != null) {
+    final points = <LatLng>[
+      if (_userPosition != null) _userPosition!,
+      destination,
+      ..._routePoints,
+    ];
+
+    if (points.length >= 2) {
+      var minLat = points.first.latitude;
+      var maxLat = points.first.latitude;
+      var minLng = points.first.longitude;
+      var maxLng = points.first.longitude;
+
+      for (final point in points) {
+        minLat = point.latitude < minLat ? point.latitude : minLat;
+        maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+        minLng = point.longitude < minLng ? point.longitude : minLng;
+        maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+      }
+
       final bounds = LatLngBounds(
-        southwest: LatLng(
-          _userPosition!.latitude < destination.latitude
-              ? _userPosition!.latitude
-              : destination.latitude,
-          _userPosition!.longitude < destination.longitude
-              ? _userPosition!.longitude
-              : destination.longitude,
-        ),
-        northeast: LatLng(
-          _userPosition!.latitude > destination.latitude
-              ? _userPosition!.latitude
-              : destination.latitude,
-          _userPosition!.longitude > destination.longitude
-              ? _userPosition!.longitude
-              : destination.longitude,
-        ),
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
       );
 
       await controller.animateCamera(
@@ -415,7 +536,7 @@ class _BottomCard extends StatelessWidget {
           if (distanceLabel != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Distance: $distanceLabel',
+              'Driving distance: $distanceLabel',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

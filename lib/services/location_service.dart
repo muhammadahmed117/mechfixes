@@ -57,19 +57,49 @@ class LocationService {
     return geocodeAddress(address);
   }
 
+  double distanceInMeters({
+    required double startLatitude,
+    required double startLongitude,
+    required double endLatitude,
+    required double endLongitude,
+  }) {
+    return Geolocator.distanceBetween(
+      startLatitude,
+      startLongitude,
+      endLatitude,
+      endLongitude,
+    );
+  }
+
+  bool isWithinRadiusMeters({
+    required double startLatitude,
+    required double startLongitude,
+    required double endLatitude,
+    required double endLongitude,
+    required double radiusMeters,
+  }) {
+    return distanceInMeters(
+          startLatitude: startLatitude,
+          startLongitude: startLongitude,
+          endLatitude: endLatitude,
+          endLongitude: endLongitude,
+        ) <=
+        radiusMeters;
+  }
+
   double distanceInKm({
     required double startLatitude,
     required double startLongitude,
     required double endLatitude,
     required double endLongitude,
   }) {
-    final meters = Geolocator.distanceBetween(
-      startLatitude,
-      startLongitude,
-      endLatitude,
-      endLongitude,
-    );
-    return meters / 1000;
+    return distanceInMeters(
+          startLatitude: startLatitude,
+          startLongitude: startLongitude,
+          endLatitude: endLatitude,
+          endLongitude: endLongitude,
+        ) /
+        1000;
   }
 
   String formatDistanceKm(double km) {
