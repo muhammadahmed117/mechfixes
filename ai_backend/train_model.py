@@ -89,7 +89,7 @@ def load_dataset(csv_path: Path) -> pd.DataFrame:
             "Place 'ML Car Diagnostic Agent AI Assistant.csv' in the data/ folder."
         )
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path).head(5000)
     df = _normalize_columns(df)
 
     for col in [COL_CAR_NAME, COL_PROBLEM, COL_ECU, COL_DIAGNOSIS, COL_SOLUTION]:
