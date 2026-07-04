@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1010810302873",
+    "project_id": "mechfixes-app-2026",
+    "storage_bucket": "mechfixes-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010810302873:android:483d6f1c5a8b45762e6308",
+        "android_client_info": {
+          "package_name": "com.example.mechfixes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDleXM64T_oDdeW83VCxYrqcj8fzzxuF-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
