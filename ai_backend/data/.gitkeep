@@ -1,0 +1,11 @@
+# Place your dataset here:
+#   ML Car Diagnostic Agent AI Assistant.csv
+#
+# Required columns (names are matched case-insensitively):
+#   - Problem Description
+#   - ECU Data
+#   - Diagnosis
+#
+# Optional columns:
+#   - Car Name
+#   - Solution

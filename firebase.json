@@ -1,0 +1,26 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "mechfixes-app-2026",
+          "appId": "1:1010810302873:android:483d6f1c5a8b45762e6308",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "mechfixes-app-2026",
+          "configurations": {
+            "android": "1:1010810302873:android:483d6f1c5a8b45762e6308",
+            "ios": "1:1010810302873:ios:571622dfaf345bf42e6308",
+            "web": "1:1010810302873:web:10e6fafabc15c39b2e6308"
+          }
+        }
+      }
+    }
+  }
+}
