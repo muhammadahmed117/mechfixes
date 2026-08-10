@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mechfixes/Customer/mechanic_map_screen.dart';
 import 'package:mechfixes/Customer/ratings_reviews_screen.dart';
 import 'package:mechfixes/Customer/widgets/mechanic_rating_display.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 import 'package:mechfixes/core/session/app_session.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -77,7 +79,15 @@ class MechanicDetailsScreen extends StatelessWidget {
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not launch phone dialer')),
+          SnackBar(
+            content: Text(
+              AppText.of(
+                context,
+                english: 'Could not launch phone dialer',
+                romanUrdu: 'Phone dialer nahin khul saka',
+              ),
+            ),
+          ),
         );
       }
     }
@@ -108,7 +118,7 @@ class MechanicDetailsScreen extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(
                           Icons.arrow_back_ios,
@@ -116,17 +126,28 @@ class MechanicDetailsScreen extends StatelessWidget {
                           size: 16,
                         ),
                         SizedBox(width: 4),
-                        Text("Back", style: TextStyle(color: Colors.white)),
+                        Text(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    "Mechanic Details",
-                    style: TextStyle(color: Colors.white),
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Mechanic Details',
+                      romanUrdu: 'Mechanic Ki Tafseel',
+                    ),
+                    style: const TextStyle(color: Colors.white),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 40),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -196,9 +217,9 @@ class MechanicDetailsScreen extends StatelessWidget {
                                           MaterialPageRoute(
                                             builder: (context) =>
                                                 RatingsReviewsScreen(
-                                              mechanicId: mechanicId,
-                                              mechanicName: mechanicName,
-                                            ),
+                                                  mechanicId: mechanicId,
+                                                  mechanicName: mechanicName,
+                                                ),
                                           ),
                                         );
                                       },
@@ -206,7 +227,13 @@ class MechanicDetailsScreen extends StatelessWidget {
                                         Icons.star_outline,
                                         size: 16,
                                       ),
-                                      label: const Text("View Ratings"),
+                                      label: Text(
+                                        AppText.of(
+                                          context,
+                                          english: 'View Ratings',
+                                          romanUrdu: 'Ratings Dekhein',
+                                        ),
+                                      ),
                                       style: OutlinedButton.styleFrom(
                                         side: const BorderSide(
                                           color: Color(0xFFD0D5DD),
@@ -239,7 +266,11 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     Expanded(
                                       child: _infoBox(
                                         Icons.location_on_outlined,
-                                        "Location",
+                                        AppText.of(
+                                          context,
+                                          english: 'Location',
+                                          romanUrdu: 'Jagah',
+                                        ),
                                         "$address\n$distance",
                                       ),
                                     ),
@@ -247,7 +278,11 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     Expanded(
                                       child: _infoBox(
                                         Icons.phone_outlined,
-                                        "Contact",
+                                        AppText.of(
+                                          context,
+                                          english: 'Contact',
+                                          romanUrdu: 'Rabita',
+                                        ),
                                         phone,
                                       ),
                                     ),
@@ -259,7 +294,11 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     Expanded(
                                       child: _infoBox(
                                         Icons.access_time,
-                                        "Hours",
+                                        AppText.of(
+                                          context,
+                                          english: 'Hours',
+                                          romanUrdu: 'Auqaat',
+                                        ),
                                         _hoursText,
                                       ),
                                     ),
@@ -267,8 +306,16 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     Expanded(
                                       child: _infoBox(
                                         Icons.attach_money,
-                                        "Average Cost",
-                                        "\$\$\$ - Premium",
+                                        AppText.of(
+                                          context,
+                                          english: 'Average Cost',
+                                          romanUrdu: 'Ausat Kharcha',
+                                        ),
+                                        AppText.of(
+                                          context,
+                                          english: '\$\$\$ - Premium',
+                                          romanUrdu: '\$\$\$ - Premium',
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -291,21 +338,23 @@ class MechanicDetailsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Services Offered",
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                          Text(
+                            AppText.of(
+                              context,
+                              english: 'Services Offered',
+                              romanUrdu: 'Dastiyab Services',
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 10,
                             runSpacing: 10,
                             children: services.isEmpty
-                                ? [
-                                    _ServiceChip(specialty),
-                                  ]
+                                ? [_ServiceChip(specialty)]
                                 : services
-                                    .map((service) => _ServiceChip(service))
-                                    .toList(),
+                                      .map((service) => _ServiceChip(service))
+                                      .toList(),
                           ),
                         ],
                       ),
@@ -320,18 +369,28 @@ class MechanicDetailsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Ready to visit?",
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english: 'Ready to visit?',
+                              romanUrdu: 'Janay ke liye tayyar hain?',
+                            ),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            "Visit the shop or request the mechanic to come to your location.",
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english:
+                                  'Visit the shop or request the mechanic to come to your location.',
+                              romanUrdu:
+                                  'Dukaan par jayen ya mechanic ko apni jagah bulayen.',
+                            ),
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
                             ),
@@ -346,11 +405,16 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     onPressed: () =>
                                         _openMapDirections(context),
                                     icon: const Icon(Icons.navigation_outlined),
-                                    label: const Text('Directions'),
+                                    label: Text(
+                                      AppText.of(
+                                        context,
+                                        english: 'Directions',
+                                        romanUrdu: 'Rasta',
+                                      ),
+                                    ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
-                                      foregroundColor:
-                                          const Color(0xFF1F3FAF),
+                                      foregroundColor: const Color(0xFF1F3FAF),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
@@ -366,11 +430,16 @@ class MechanicDetailsScreen extends StatelessWidget {
                                     onPressed: () =>
                                         _makePhoneCall(phone, context),
                                     icon: const Icon(Icons.phone),
-                                    label: const Text('Call'),
+                                    label: Text(
+                                      AppText.of(
+                                        context,
+                                        english: 'Call',
+                                        romanUrdu: 'Call Karein',
+                                      ),
+                                    ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
-                                      foregroundColor:
-                                          const Color(0xFF1F3FAF),
+                                      foregroundColor: const Color(0xFF1F3FAF),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),

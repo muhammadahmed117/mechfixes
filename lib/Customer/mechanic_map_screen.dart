@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mechfixes/core/config/google_maps_config.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 import 'package:mechfixes/services/directions_service.dart';
 import 'package:mechfixes/services/location_service.dart';
 import 'package:mechfixes/services/mechanics_repository.dart';
@@ -29,8 +31,14 @@ class MechanicMapScreen extends StatefulWidget {
   }) {
     if (address.trim().isEmpty && latitude == null && longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location not available for this mechanic'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Location not available for this mechanic',
+              romanUrdu: 'Is mechanic ki jagah mojood nahin',
+            ),
+          ),
         ),
       );
       return Future.value();
@@ -107,10 +115,7 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
         return;
       }
 
-      final destLatLng = LatLng(
-        destination.latitude,
-        destination.longitude,
-      );
+      final destLatLng = LatLng(destination.latitude, destination.longitude);
 
       final userPosition = await _locationService.getCurrentPosition();
       LatLng? userLatLng;
@@ -214,7 +219,9 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
           markerId: const MarkerId('user'),
           position: userLatLng,
           infoWindow: const InfoWindow(title: 'Your location'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
         ),
       );
 
@@ -283,7 +290,9 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
         '${GoogleMapsConfig.nearbyMechanicRadiusMeters.toInt()} m',
       );
     } catch (error, stackTrace) {
-      debugPrint('[MechanicMap] Failed to load nearby mechanic markers: $error');
+      debugPrint(
+        '[MechanicMap] Failed to load nearby mechanic markers: $error',
+      );
       debugPrint('$stackTrace');
     }
 
@@ -325,9 +334,7 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
         northeast: LatLng(maxLat, maxLng),
       );
 
-      await controller.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 80),
-      );
+      await controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
       return;
     }
 
@@ -350,7 +357,15 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open navigation')),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Could not open navigation',
+              romanUrdu: 'Navigation nahin khul saki',
+            ),
+          ),
+        ),
       );
     }
   }
@@ -370,24 +385,39 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         SizedBox(width: 4),
-                        Text('Back', style: TextStyle(color: Colors.white)),
+                        Text(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    'Directions',
-                    style: TextStyle(
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Directions',
+                      romanUrdu: 'Rasta',
+                    ),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 48),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -400,6 +430,7 @@ class _MechanicMapScreenState extends State<MechanicMapScreen> {
                         target: _destination!,
                         zoom: 14,
                       ),
+                      mapType: MapType.normal,
                       markers: _markers,
                       polylines: _polylines,
                       myLocationEnabled: _userPosition == null,
@@ -536,7 +567,11 @@ class _BottomCard extends StatelessWidget {
           if (distanceLabel != null) ...[
             const SizedBox(height: 8),
             Text(
-              'Driving distance: $distanceLabel',
+              AppText.of(
+                context,
+                english: 'Driving distance: $distanceLabel',
+                romanUrdu: 'Gaari se fasla: $distanceLabel',
+              ),
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -551,7 +586,13 @@ class _BottomCard extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onStartNavigation,
               icon: const Icon(Icons.navigation_outlined),
-              label: const Text('Start Navigation'),
+              label: Text(
+                AppText.of(
+                  context,
+                  english: 'Start Navigation',
+                  romanUrdu: 'Navigation Shuru Karein',
+                ),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1F3FAF),
                 foregroundColor: Colors.white,

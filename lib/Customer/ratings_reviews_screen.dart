@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mechfixes/Customer/widgets/mechanic_rating_display.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class RatingsReviewsScreen extends StatefulWidget {
   const RatingsReviewsScreen({
@@ -39,8 +41,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _sortedDocs(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
-    final sorted =
-        List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs);
+    final sorted = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs);
     sorted.sort((a, b) {
       final aTime = a.data()['createdAt'];
       final bTime = b.data()['createdAt'];
@@ -78,7 +79,8 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
     double averageRating,
     int totalReviews,
     List<Map<String, dynamic>> ratingBreakdown,
-  }) _calculateStats(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  })
+  _calculateStats(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     final liveStats = MechanicRatingDisplay.statsFromDocs(docs);
     final totalReviews = liveStats.count;
     final averageRating = liveStats.average;
@@ -94,8 +96,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
 
     final ratingBreakdown = [5, 4, 3, 2, 1].map((stars) {
       final count = starCounts[stars] ?? 0;
-      final percent =
-          totalReviews > 0 ? count / totalReviews : 0.0;
+      final percent = totalReviews > 0 ? count / totalReviews : 0.0;
       return {'stars': stars, 'percent': percent};
     }).toList();
 
@@ -109,7 +110,15 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
   Future<void> _submitReview() async {
     if (selectedRating <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Please select a rating',
+              romanUrdu: 'Rating chunein',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -117,7 +126,15 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to submit a review')),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Please sign in to submit a review',
+              romanUrdu: 'Review submit karne ke liye sign in karein',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -132,8 +149,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
             .collection('users')
             .doc(user.uid)
             .get();
-        currentUserName =
-            userDoc.data()?['fullName'] as String? ?? 'User';
+        currentUserName = userDoc.data()?['fullName'] as String? ?? 'User';
       }
 
       await FirebaseFirestore.instance.collection('reviews').add({
@@ -160,10 +176,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
       await FirebaseFirestore.instance
           .collection('mechanics')
           .doc(widget.mechanicId)
-          .update({
-        'rating': avg,
-        'reviewCount': count,
-      });
+          .update({'rating': avg, 'reviewCount': count});
 
       reviewController.clear();
       setState(() {
@@ -173,8 +186,14 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Review submitted successfully'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Review submitted successfully',
+              romanUrdu: 'Review kamyabi se submit ho gaya',
+            ),
+          ),
           backgroundColor: Color(0xFF1FAB5D),
         ),
       );
@@ -206,13 +225,21 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios, color: Colors.white, size: 15),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 15,
+                        ),
                         SizedBox(width: 4),
                         Text(
-                          "Back",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -222,14 +249,19 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    "Ratings & Reviews",
-                    style: TextStyle(
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Ratings & Reviews',
+                      romanUrdu: 'Ratings Aur Reviews',
+                    ),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -250,7 +282,13 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Text(
-                          'Could not load reviews.\n${snapshot.error}',
+                          AppText.of(
+                            context,
+                            english:
+                                'Could not load reviews.\n${snapshot.error}',
+                            romanUrdu:
+                                'Reviews load nahin ho sake.\n${snapshot.error}',
+                          ),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 12,
@@ -263,8 +301,8 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
 
                   final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs =
                       snapshot.hasData
-                          ? _sortedDocs(snapshot.data!.docs)
-                          : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+                      ? _sortedDocs(snapshot.data!.docs)
+                      : <QueryDocumentSnapshot<Map<String, dynamic>>>[];
                   final stats = _calculateStats(docs);
 
                   return SingleChildScrollView(
@@ -281,20 +319,28 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                         const SizedBox(height: 12),
                         _buildWriteReviewCard(),
                         const SizedBox(height: 12),
-                        const Text(
-                          "Customer Reviews",
-                          style: TextStyle(
+                        Text(
+                          AppText.of(
+                            context,
+                            english: 'Customer Reviews',
+                            romanUrdu: 'Customer Reviews',
+                          ),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF475467),
                           ),
                         ),
                         const SizedBox(height: 8),
                         if (docs.isEmpty)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(vertical: 16),
                             child: Text(
-                              'No reviews yet',
-                              style: TextStyle(
+                              AppText.of(
+                                context,
+                                english: 'No reviews yet',
+                                romanUrdu: 'Abhi koi review nahin',
+                              ),
+                              style: const TextStyle(
                                 fontSize: 10,
                                 color: Color(0xFF98A2B3),
                               ),
@@ -367,10 +413,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                   mechanicName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 8,
-                    color: Color(0xFF667085),
-                  ),
+                  style: const TextStyle(fontSize: 8, color: Color(0xFF667085)),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -397,11 +440,12 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$totalReviews reviews',
-                  style: const TextStyle(
-                    fontSize: 8,
-                    color: Color(0xFF98A2B3),
+                  AppText.of(
+                    context,
+                    english: '$totalReviews reviews',
+                    romanUrdu: '$totalReviews reviews',
                   ),
+                  style: const TextStyle(fontSize: 8, color: Color(0xFF98A2B3)),
                 ),
               ],
             ),
@@ -474,7 +518,7 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.check_circle_outline,
@@ -483,8 +527,12 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                 ),
                 SizedBox(width: 8),
                 Text(
-                  'Review submitted',
-                  style: TextStyle(
+                  AppText.of(
+                    context,
+                    english: 'Review submitted',
+                    romanUrdu: 'Review submit ho gaya',
+                  ),
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF101828),
@@ -493,9 +541,15 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Thanks for sharing your feedback. Your review is now visible below.',
-              style: TextStyle(
+            Text(
+              AppText.of(
+                context,
+                english:
+                    'Thanks for sharing your feedback. Your review is now visible below.',
+                romanUrdu:
+                    'Apni rai dene ka shukriya. Aap ka review neeche dikh raha hai.',
+              ),
+              style: const TextStyle(
                 fontSize: 9,
                 color: Color(0xFF667085),
                 height: 1.4,
@@ -508,7 +562,13 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                 onPressed: () {
                   setState(() => _hasSubmittedReview = false);
                 },
-                child: const Text('Write another review'),
+                child: Text(
+                  AppText.of(
+                    context,
+                    english: 'Write another review',
+                    romanUrdu: 'Ek aur review likhein',
+                  ),
+                ),
               ),
             ),
           ],
@@ -527,21 +587,26 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Write a Review",
-            style: TextStyle(
+          Text(
+            AppText.of(
+              context,
+              english: 'Write a Review',
+              romanUrdu: 'Review Likhein',
+            ),
+            style: const TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w500,
               color: Color(0xFF101828),
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            "Your Rating",
-            style: TextStyle(
-              fontSize: 8,
-              color: Color(0xFF667085),
+          Text(
+            AppText.of(
+              context,
+              english: 'Your Rating',
+              romanUrdu: 'Aap ki Rating',
             ),
+            style: const TextStyle(fontSize: 8, color: Color(0xFF667085)),
           ),
           const SizedBox(height: 6),
           Row(
@@ -569,12 +634,13 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
             }),
           ),
           const SizedBox(height: 10),
-          const Text(
-            "Your Review",
-            style: TextStyle(
-              fontSize: 8,
-              color: Color(0xFF667085),
+          Text(
+            AppText.of(
+              context,
+              english: 'Your Review',
+              romanUrdu: 'Aap ka Review',
             ),
+            style: const TextStyle(fontSize: 8, color: Color(0xFF667085)),
           ),
           const SizedBox(height: 6),
           TextField(
@@ -582,15 +648,18 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
             maxLines: 3,
             enabled: !_isSubmitting,
             decoration: InputDecoration(
-              hintText: "Share your experience with this mechanic...",
-              hintStyle: const TextStyle(
-                fontSize: 9,
-                color: Color(0xFF98A2B3),
+              hintText: AppText.of(
+                context,
+                english: 'Share your experience with this mechanic...',
+                romanUrdu: 'Is mechanic ke sath apna tajurba likhein...',
               ),
+              hintStyle: const TextStyle(fontSize: 9, color: Color(0xFF98A2B3)),
               filled: true,
               fillColor: const Color(0xFFF9FAFB),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide: const BorderSide(color: Color(0xFFD0D5DD)),
@@ -628,9 +697,13 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      "Submit Review",
-                      style: TextStyle(
+                  : Text(
+                      AppText.of(
+                        context,
+                        english: 'Submit Review',
+                        romanUrdu: 'Review Submit Karein',
+                      ),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w500,
@@ -736,11 +809,12 @@ class _RatingsReviewsScreenState extends State<RatingsReviewsScreen> {
               ),
               const SizedBox(width: 4),
               Text(
-                "Helpful ($helpful)",
-                style: const TextStyle(
-                  fontSize: 8,
-                  color: Color(0xFF667085),
+                AppText.of(
+                  context,
+                  english: 'Helpful ($helpful)',
+                  romanUrdu: 'Madadgar ($helpful)',
                 ),
+                style: const TextStyle(fontSize: 8, color: Color(0xFF667085)),
               ),
             ],
           ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mechfixes/Customer/issue_category.dart';
 import 'package:mechfixes/data/vehicle_issue.dart';
 import 'package:mechfixes/Mechanic/services/mechanic_skills_service.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class AddSkillsServicesScreen extends StatefulWidget {
   const AddSkillsServicesScreen({
@@ -30,8 +32,7 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
   @override
   void initState() {
     super.initState();
-    final allowedTitles =
-        _allowedIssues.map((issue) => issue.title).toSet();
+    final allowedTitles = _allowedIssues.map((issue) => issue.title).toSet();
 
     for (final service in widget.initialSelectedServices) {
       if (allowedTitles.contains(service)) {
@@ -53,8 +54,15 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
   Future<void> _saveServices() async {
     if (_selectedServices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select at least one service to continue'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Select at least one service to continue',
+              romanUrdu:
+                  'Jari rakhne ke liye kam az kam aik service select karein',
+            ),
+          ),
         ),
       );
       return;
@@ -106,29 +114,43 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios,
-                            color: Colors.white, size: 16),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         SizedBox(width: 4),
                         Text(
-                          'Back',
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    'Add Skills / Services',
-                    style: TextStyle(
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Add Skills / Services',
+                      romanUrdu: 'Skills / Services Add Karein',
+                    ),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 48),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -146,14 +168,20 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF9FAFB),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE4E7EC)),
+                              border: Border.all(
+                                color: const Color(0xFFE4E7EC),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Your specialization',
-                                  style: TextStyle(
+                                Text(
+                                  AppText.of(
+                                    context,
+                                    english: 'Your specialization',
+                                    romanUrdu: 'Aap ki specialty',
+                                  ),
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF667085),
                                   ),
@@ -170,8 +198,20 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                                 const SizedBox(height: 8),
                                 Text(
                                   categories.isEmpty
-                                      ? 'No matching category found.'
-                                      : 'Showing ${categories.map((c) => c.label).join(', ')} services only.',
+                                      ? AppText.of(
+                                          context,
+                                          english:
+                                              'No matching category found.',
+                                          romanUrdu:
+                                              'Koi milti hui category nahi mili.',
+                                        )
+                                      : AppText.of(
+                                          context,
+                                          english:
+                                              'Showing ${categories.map((c) => c.label).join(', ')} services only.',
+                                          romanUrdu:
+                                              'Sirf ${categories.map((c) => c.label).join(', ')} services dikha rahe hain.',
+                                        ),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF667085),
@@ -181,18 +221,29 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                             ),
                           ),
                           const SizedBox(height: 18),
-                          const Text(
-                            'Select the services you specialize in',
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english: 'Select the services you specialize in',
+                              romanUrdu:
+                                  'Woh services select karein jin mein aap maahir hain',
+                            ),
+                            style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF101828),
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Only issues related to your specialization are shown.',
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english:
+                                  'Only issues related to your specialization are shown.',
+                              romanUrdu:
+                                  'Sirf aap ki specialty se mutaliq maslay dikhaye gaye hain.',
+                            ),
+                            style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF667085),
                             ),
@@ -202,8 +253,9 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                             spacing: 10,
                             runSpacing: 10,
                             children: allowedIssues.map((issue) {
-                              final isSelected =
-                                  _selectedServices.contains(issue.title);
+                              final isSelected = _selectedServices.contains(
+                                issue.title,
+                              );
 
                               return _ServiceChipTile(
                                 title: issue.title,
@@ -220,9 +272,7 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: Color(0xFFE4E7EC)),
-                ),
+                border: Border(top: BorderSide(color: Color(0xFFE4E7EC))),
               ),
               child: SafeArea(
                 top: false,
@@ -248,7 +298,13 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
                             ),
                           )
                         : Text(
-                            'Save Services (${_selectedServices.length})',
+                            AppText.of(
+                              context,
+                              english:
+                                  'Save Services (${_selectedServices.length})',
+                              romanUrdu:
+                                  'Services Save Karein (${_selectedServices.length})',
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
@@ -274,19 +330,29 @@ class _AddSkillsServicesScreenState extends State<AddSkillsServicesScreen> {
           children: [
             Icon(Icons.info_outline, size: 42, color: Colors.grey.shade400),
             const SizedBox(height: 12),
-            const Text(
-              'No specialization found',
-              style: TextStyle(
+            Text(
+              AppText.of(
+                context,
+                english: 'No specialization found',
+                romanUrdu: 'Koi specialty nahi mili',
+              ),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF101828),
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Complete your shop profile and choose a specialty first.',
+            Text(
+              AppText.of(
+                context,
+                english:
+                    'Complete your shop profile and choose a specialty first.',
+                romanUrdu:
+                    'Pehle apna shop profile mukammal karein aur specialty chunain.',
+              ),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Color(0xFF667085)),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF667085)),
             ),
           ],
         ),
@@ -340,9 +406,7 @@ class _ServiceChipTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isSelected
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
+                isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
                 size: 18,
                 color: isSelected
                     ? const Color(0xFF12B76A)
@@ -357,8 +421,7 @@ class _ServiceChipTile extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     color: isSelected
                         ? const Color(0xFF027A48)
                         : const Color(0xFF667085),

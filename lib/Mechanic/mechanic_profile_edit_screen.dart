@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mechfixes/Mechanic/mechanic_pending_approval_screen.dart';
 import 'package:mechfixes/Mechanic/mechanic_profile_data.dart';
 import 'package:mechfixes/Mechanic/mechanic_specialty_config.dart';
-import 'package:mechfixes/Mechanic/mechanic_dashboard_screen.dart';
 import 'package:mechfixes/Mechanic/map_location_picker_screen.dart';
 import 'package:mechfixes/models/picked_location.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class MechanicProfileEditScreen extends StatefulWidget {
   const MechanicProfileEditScreen({
@@ -126,8 +128,9 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
     }
 
     for (final specialty in selectedSpecialties) {
-      specialtyServices[specialty] =
-          List<String>.from(widget.initialSpecialtyServices[specialty] ?? const []);
+      specialtyServices[specialty] = List<String>.from(
+        widget.initialSpecialtyServices[specialty] ?? const [],
+      );
       _serviceInputControllers[specialty] = TextEditingController();
     }
 
@@ -148,8 +151,10 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
 
-      final doc =
-          await FirebaseFirestore.instance.collection('mechanics').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('mechanics')
+          .doc(uid)
+          .get();
       if (!doc.exists || !mounted) return;
 
       final data = doc.data()!;
@@ -157,8 +162,8 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       shopNameController.text = data['shopName'] as String? ?? '';
       phoneController.text = data['phone'] as String? ?? '';
       emailController.text = data['email'] as String? ?? widget.initialEmail;
-      addressController.text = (data['location'] as String?) ??
-          (data['address'] as String? ?? '');
+      addressController.text =
+          (data['location'] as String?) ?? (data['address'] as String? ?? '');
 
       final geoPoint = data['geoPoint'];
       if (geoPoint is GeoPoint) {
@@ -191,7 +196,8 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
         openingHourEndController.text = hours.$2;
       }
 
-      final specialties = (data['specialties'] as List<dynamic>?)
+      final specialties =
+          (data['specialties'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
@@ -253,7 +259,10 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       return;
     }
 
-    if (MechanicSpecialtyConfig.isSuggestedForOtherSpecialty(service, specialty)) {
+    if (MechanicSpecialtyConfig.isSuggestedForOtherSpecialty(
+      service,
+      specialty,
+    )) {
       final owner = MechanicSpecialtyConfig.ownerSpecialtyForService(service);
       setState(() {
         _serviceInputErrors[specialty] =
@@ -311,8 +320,7 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       final services = specialtyServices[specialty] ?? const [];
       if (services.isEmpty) {
         setState(() {
-          specialtyValidationError =
-              'Add at least one service for $specialty';
+          specialtyValidationError = 'Add at least one service for $specialty';
         });
         return false;
       }
@@ -452,10 +460,9 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
               Expanded(
                 child: TextField(
                   controller: inputController,
-                  decoration: _inputDecoration('Add custom $specialty service')
-                      .copyWith(
-                    errorText: _serviceInputErrors[specialty],
-                  ),
+                  decoration: _inputDecoration(
+                    'Add custom $specialty service',
+                  ).copyWith(errorText: _serviceInputErrors[specialty]),
                   onChanged: (_) {
                     if (_serviceInputErrors[specialty] != null) {
                       setState(() {
@@ -471,10 +478,7 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () {
-                    _addService(
-                      specialty,
-                      inputController?.text ?? '',
-                    );
+                    _addService(specialty, inputController?.text ?? '');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1F3FAF),
@@ -619,7 +623,8 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
   }
 
   Widget _buildPhotoBox() {
-    final hasPhoto = selectedPhotoBytes != null && selectedPhotoBytes!.isNotEmpty;
+    final hasPhoto =
+        selectedPhotoBytes != null && selectedPhotoBytes!.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -648,16 +653,21 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                             },
                             onScaleUpdate: (details) {
                               setState(() {
-                                photoScale = (_gestureStartScale * details.scale)
-                                    .clamp(1.0, 2.0);
-                                photoAlignmentX = (photoAlignmentX +
-                                        details.focalPointDelta.dx /
-                                            (boxWidth / 2))
-                                    .clamp(-1.0, 1.0);
-                                photoAlignmentY = (photoAlignmentY +
-                                        details.focalPointDelta.dy /
-                                            (boxHeight / 2))
-                                    .clamp(-1.0, 1.0);
+                                photoScale =
+                                    (_gestureStartScale * details.scale).clamp(
+                                      1.0,
+                                      2.0,
+                                    );
+                                photoAlignmentX =
+                                    (photoAlignmentX +
+                                            details.focalPointDelta.dx /
+                                                (boxWidth / 2))
+                                        .clamp(-1.0, 1.0);
+                                photoAlignmentY =
+                                    (photoAlignmentY +
+                                            details.focalPointDelta.dy /
+                                                (boxHeight / 2))
+                                        .clamp(-1.0, 1.0);
                               });
                             },
                             child: Stack(
@@ -682,7 +692,9 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.35),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.35,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -692,7 +704,7 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                           );
                         },
                       )
-                    : const Center(
+                    : Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -703,8 +715,12 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                             ),
                             SizedBox(height: 10),
                             Text(
-                              "Upload your photo",
-                              style: TextStyle(
+                              AppText.of(
+                                context,
+                                english: "Upload your photo",
+                                romanUrdu: "Apni photo upload karein",
+                              ),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF344054),
@@ -712,8 +728,12 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              "Tap to choose a picture",
-                              style: TextStyle(
+                              AppText.of(
+                                context,
+                                english: "Tap to choose a picture",
+                                romanUrdu: "Tasveer chunne ke liye tap karein",
+                              ),
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF667085),
                               ),
@@ -729,7 +749,15 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
               child: ElevatedButton.icon(
                 onPressed: _pickPhoto,
                 icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                label: Text(hasPhoto ? "Change Photo" : "Upload Photo"),
+                label: Text(
+                  AppText.of(
+                    context,
+                    english: hasPhoto ? "Change Photo" : "Upload Photo",
+                    romanUrdu: hasPhoto
+                        ? "Photo Badlein"
+                        : "Photo Upload Karein",
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1F3FAF),
                   foregroundColor: Colors.white,
@@ -779,9 +807,8 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
     final result = await Navigator.push<PickedLocation>(
       context,
       MaterialPageRoute(
-        builder: (_) => MapLocationPickerScreen(
-          initialPosition: initialPosition,
-        ),
+        builder: (_) =>
+            MapLocationPickerScreen(initialPosition: initialPosition),
       ),
     );
 
@@ -809,30 +836,28 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       final uid = FirebaseAuth.instance.currentUser!.uid;
       final specialization = selectedSpecialties.join(', ');
 
-      await FirebaseFirestore.instance.collection('mechanics').doc(uid).set(
-        {
-          'shopName': shopNameController.text.trim(),
-          'location': addressController.text.trim(),
-          'address': addressController.text.trim(),
-          'phone': phoneController.text.trim(),
-          'specialization': specialization,
-          'specialties': selectedSpecialties,
-          'openingDays': _combinedOpeningDays,
-          'openingHours': _combinedOpeningHours,
-          'openingDayStart': openingDayStartController.text.trim(),
-          'openingDayEnd': openingDayEndController.text.trim(),
-          'openingHourStart': openingHourStartController.text.trim(),
-          'openingHourEnd': openingHourEndController.text.trim(),
-          'isDemo': false,
-          if (widget.isOnboarding) 'isVerified': false,
-          if (_selectedLatitude != null && _selectedLongitude != null) ...{
-            'latitude': _selectedLatitude,
-            'longitude': _selectedLongitude,
-            'geoPoint': GeoPoint(_selectedLatitude!, _selectedLongitude!),
-          },
+      await FirebaseFirestore.instance.collection('mechanics').doc(uid).set({
+        'shopName': shopNameController.text.trim(),
+        'location': addressController.text.trim(),
+        'address': addressController.text.trim(),
+        'phone': phoneController.text.trim(),
+        'specialization': specialization,
+        'specialties': selectedSpecialties,
+        'openingDays': _combinedOpeningDays,
+        'openingHours': _combinedOpeningHours,
+        'openingDayStart': openingDayStartController.text.trim(),
+        'openingDayEnd': openingDayEndController.text.trim(),
+        'openingHourStart': openingHourStartController.text.trim(),
+        'openingHourEnd': openingHourEndController.text.trim(),
+        'isDemo': false,
+        if (widget.isOnboarding) 'isVerified': false,
+        if (widget.isOnboarding) 'status': 'pending',
+        if (_selectedLatitude != null && _selectedLongitude != null) ...{
+          'latitude': _selectedLatitude,
+          'longitude': _selectedLongitude,
+          'geoPoint': GeoPoint(_selectedLatitude!, _selectedLongitude!),
         },
-        SetOptions(merge: true),
-      );
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
 
@@ -844,8 +869,9 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
         specialties: List<String>.from(selectedSpecialties),
         specialtyServices: {
           for (final specialty in selectedSpecialties)
-            specialty:
-                List<String>.from(specialtyServices[specialty] ?? const []),
+            specialty: List<String>.from(
+              specialtyServices[specialty] ?? const [],
+            ),
         },
         openingDays: _combinedOpeningDays,
         openingHours: _combinedOpeningHours,
@@ -856,7 +882,7 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
       );
 
       if (widget.isOnboarding) {
-        _goToDashboard(profileData);
+        _goToPendingApproval();
       } else {
         Navigator.pop(context, profileData);
       }
@@ -874,10 +900,10 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
     }
   }
 
-  void _goToDashboard(MechanicProfileData profileData) {
+  void _goToPendingApproval() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (context) => MechanicDashboardScreen(profileData: profileData),
+        builder: (context) => const MechanicPendingApprovalScreen(),
       ),
       (route) => false,
     );
@@ -902,21 +928,36 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                   else
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.arrow_back_ios,
-                              color: Colors.white, size: 16),
+                          Icon(
+                            Icons.arrow_back_ios,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                           SizedBox(width: 4),
                           Text(
-                            "Back",
-                            style: TextStyle(color: Colors.white),
+                            AppText.of(
+                              context,
+                              english: "Back",
+                              romanUrdu: "Wapas",
+                            ),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ],
                       ),
                     ),
                   const Spacer(),
                   Text(
-                    widget.isOnboarding ? "Complete Shop Profile" : "Edit Shop Profile",
+                    AppText.of(
+                      context,
+                      english: widget.isOnboarding
+                          ? "Complete Shop Profile"
+                          : "Edit Shop Profile",
+                      romanUrdu: widget.isOnboarding
+                          ? "Shop Profile Mukammal Karein"
+                          : "Shop Profile Edit Karein",
+                    ),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -924,202 +965,302 @@ class _MechanicProfileEditScreenState extends State<MechanicProfileEditScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const SizedBox(width: 40),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
             Expanded(
               child: _isLoadingProfile
                   ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF1F3FAF)),
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF1F3FAF),
+                      ),
                     )
                   : SingleChildScrollView(
-                padding: const EdgeInsets.all(18),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: const Color(0xFFD7DDE8)),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                      padding: const EdgeInsets.all(18),
+                      child: Form(
+                        key: _formKey,
                         child: Column(
                           children: [
-                            _buildPhotoBox(),
-                            const SizedBox(height: 18),
-
-                            _label("Shop Name"),
-                            TextFormField(
-                              controller: shopNameController,
-                              enabled: !_isLoadingProfile,
-                              decoration: _inputDecoration("Enter shop name"),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return "Shop name is required";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 14),
-
-                            _label("Phone Number"),
-                            TextFormField(
-                              controller: phoneController,
-                              enabled: !_isLoadingProfile,
-                              keyboardType: TextInputType.phone,
-                              decoration: _inputDecoration("Enter phone number"),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return "Phone number is required";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 14),
-
-                            _label("Email Address"),
-                            TextFormField(
-                              controller: emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              readOnly: true,
-                              decoration: _inputDecoration("Enter email address"),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return "Email is required";
-                                }
-                                if (!RegExp(
-                                  r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
-                                ).hasMatch(value.trim())) {
-                                  return "Enter a valid email";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 6),
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "This email is fixed from sign-up and cannot be changed.",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF667085),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-
-                            _label("Address"),
-                            TextFormField(
-                              controller: addressController,
-                              readOnly: true,
-                              maxLines: 2,
-                              decoration: _inputDecoration(
-                                "Select your shop location on the map",
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return "Address is required";
-                                }
-                                if (_selectedLatitude == null ||
-                                    _selectedLongitude == null) {
-                                  return "Please select your location on the map";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
+                            Container(
                               width: double.infinity,
-                              height: 42,
-                              child: OutlinedButton.icon(
-                                onPressed:
-                                    _isLoadingProfile ? null : _openLocationPicker,
-                                icon: const Icon(Icons.map_outlined, size: 18),
-                                label: const Text('Select on Map'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF1F3FAF),
-                                  side: const BorderSide(color: Color(0xFF1F3FAF)),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: const Color(0xFFD7DDE8),
                                 ),
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                            ),
-                            const SizedBox(height: 14),
+                              child: Column(
+                                children: [
+                                  _buildPhotoBox(),
+                                  const SizedBox(height: 18),
 
-                            _buildSpecialtySelector(),
-                            if (selectedSpecialties.isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              _label('Services by Specialty'),
-                              ...selectedSpecialties.map(_buildServicesSection),
-                            ],
-                            const SizedBox(height: 14),
-
-                            _buildSplitRangeFields(
-                              label: 'Opening Days',
-                              startController: openingDayStartController,
-                              endController: openingDayEndController,
-                              startHint: 'Mon',
-                              endHint: 'Fri',
-                              emptyError: 'Required',
-                            ),
-                            const SizedBox(height: 14),
-                            _buildSplitRangeFields(
-                              label: 'Opening Hours',
-                              startController: openingHourStartController,
-                              endController: openingHourEndController,
-                              startHint: '8 AM',
-                              endHint: '6 PM',
-                              emptyError: 'Required',
-                            ),
-                            const SizedBox(height: 20),
-
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: ElevatedButton(
-                                onPressed: (_isSaving || _isLoadingProfile)
-                                    ? null
-                                    : _saveProfile,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1F3FAF),
-                                  disabledBackgroundColor: const Color(0xFFBFD0FF),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                                  _label(
+                                    AppText.of(
+                                      context,
+                                      english: "Shop Name",
+                                      romanUrdu: "Shop Ka Naam",
+                                    ),
                                   ),
-                                ),
-                                child: _isSaving
-                                    ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(
-                                        widget.isOnboarding
-                                            ? "Save & Continue"
-                                            : "Save Changes",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
+                                  TextFormField(
+                                    controller: shopNameController,
+                                    enabled: !_isLoadingProfile,
+                                    decoration: _inputDecoration(
+                                      AppText.of(
+                                        context,
+                                        english: "Enter shop name",
+                                        romanUrdu: "Shop ka naam likhein",
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return "Shop name is required";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 14),
+
+                                  _label(
+                                    AppText.of(
+                                      context,
+                                      english: "Phone Number",
+                                      romanUrdu: "Phone Number",
+                                    ),
+                                  ),
+                                  TextFormField(
+                                    controller: phoneController,
+                                    enabled: !_isLoadingProfile,
+                                    keyboardType: TextInputType.phone,
+                                    decoration: _inputDecoration(
+                                      AppText.of(
+                                        context,
+                                        english: "Enter phone number",
+                                        romanUrdu: "Phone number likhein",
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return "Phone number is required";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 14),
+
+                                  _label(
+                                    AppText.of(
+                                      context,
+                                      english: "Email Address",
+                                      romanUrdu: "Email Address",
+                                    ),
+                                  ),
+                                  TextFormField(
+                                    controller: emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    readOnly: true,
+                                    decoration: _inputDecoration(
+                                      AppText.of(
+                                        context,
+                                        english: "Enter email address",
+                                        romanUrdu: "Email address likhein",
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return "Email is required";
+                                      }
+                                      if (!RegExp(
+                                        r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
+                                      ).hasMatch(value.trim())) {
+                                        return "Enter a valid email";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "This email is fixed from sign-up and cannot be changed.",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF667085),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+
+                                  _label(
+                                    AppText.of(
+                                      context,
+                                      english: "Address",
+                                      romanUrdu: "Pata",
+                                    ),
+                                  ),
+                                  TextFormField(
+                                    controller: addressController,
+                                    readOnly: true,
+                                    maxLines: 2,
+                                    decoration: _inputDecoration(
+                                      AppText.of(
+                                        context,
+                                        english:
+                                            "Select your shop location on the map",
+                                        romanUrdu:
+                                            "Map par apni shop ki location select karein",
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return "Address is required";
+                                      }
+                                      if (_selectedLatitude == null ||
+                                          _selectedLongitude == null) {
+                                        return "Please select your location on the map";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 42,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _isLoadingProfile
+                                          ? null
+                                          : _openLocationPicker,
+                                      icon: const Icon(
+                                        Icons.map_outlined,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        AppText.of(
+                                          context,
+                                          english: 'Select on Map',
+                                          romanUrdu: 'Map Par Select Karein',
                                         ),
                                       ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(
+                                          0xFF1F3FAF,
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFF1F3FAF),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+
+                                  _buildSpecialtySelector(),
+                                  if (selectedSpecialties.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    _label('Services by Specialty'),
+                                    ...selectedSpecialties.map(
+                                      _buildServicesSection,
+                                    ),
+                                  ],
+                                  const SizedBox(height: 14),
+
+                                  _buildSplitRangeFields(
+                                    label: AppText.of(
+                                      context,
+                                      english: 'Opening Days',
+                                      romanUrdu: 'Khulne Ke Din',
+                                    ),
+                                    startController: openingDayStartController,
+                                    endController: openingDayEndController,
+                                    startHint: 'Mon',
+                                    endHint: 'Fri',
+                                    emptyError: 'Required',
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _buildSplitRangeFields(
+                                    label: AppText.of(
+                                      context,
+                                      english: 'Opening Hours',
+                                      romanUrdu: 'Khulne Ka Waqt',
+                                    ),
+                                    startController: openingHourStartController,
+                                    endController: openingHourEndController,
+                                    startHint: '8 AM',
+                                    endHint: '6 PM',
+                                    emptyError: 'Required',
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 52,
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          (_isSaving || _isLoadingProfile)
+                                          ? null
+                                          : _saveProfile,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF1F3FAF,
+                                        ),
+                                        disabledBackgroundColor: const Color(
+                                          0xFFBFD0FF,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                      ),
+                                      child: _isSaving
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(
+                                              widget.isOnboarding
+                                                  ? AppText.of(
+                                                      context,
+                                                      english:
+                                                          "Save & Continue",
+                                                      romanUrdu:
+                                                          "Save Kar Ke Jari Rakhein",
+                                                    )
+                                                  : AppText.of(
+                                                      context,
+                                                      english: "Save Changes",
+                                                      romanUrdu:
+                                                          "Tabdeeliyan Save Karein",
+                                                    ),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
+                      ),
+                    ),
             ),
           ],
         ),

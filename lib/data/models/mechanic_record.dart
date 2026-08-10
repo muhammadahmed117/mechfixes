@@ -23,6 +23,7 @@ class MechanicRecord {
     this.openingDays = '',
     this.openingHours = '',
     this.status = 'pending',
+    this.adminNote = '',
     this.createdAt,
   });
 
@@ -44,6 +45,7 @@ class MechanicRecord {
   final String openingDays;
   final String openingHours;
   final String status;
+  final String adminNote;
   final DateTime? createdAt;
 
   String get displayName => shopName.trim().isNotEmpty ? shopName : fullName;
@@ -76,6 +78,7 @@ class MechanicRecord {
       openingDays: _readOpeningDays(data),
       openingHours: _readOpeningHours(data),
       status: FirestoreParsers.readString(data['status'], fallback: 'pending'),
+      adminNote: FirestoreParsers.readString(data['adminNote']),
       createdAt: FirestoreParsers.readTimestamp(data['createdAt']),
     );
   }
@@ -88,6 +91,12 @@ class MechanicRecord {
 
   bool get isRejected => status.toLowerCase() == 'rejected';
 
+  bool get isApproved =>
+      isVerified || status.toLowerCase() == 'approved';
+
+  bool get isPendingApproval =>
+      !isVerified && !isRejected && status.toLowerCase() != 'approved';
+
   bool get hasCoordinates => latitude != null && longitude != null;
 
   bool get hasCompleteProfile =>
@@ -95,14 +104,12 @@ class MechanicRecord {
       phone.trim().isNotEmpty &&
       address.trim().isNotEmpty;
 
-  /// Customer-visible mechanics must not be demo data and need a complete profile.
-  /// Verified mechanics are always shown. Mechanics with existing reviews are also
-  /// shown so a profile edit does not hide previously approved shops.
+  /// Customer-visible mechanics must be admin-verified (not demo / rejected).
   bool get isCustomerVisible =>
       !isDemo &&
       !isRejected &&
       hasCompleteProfile &&
-      (isVerified || reviewCount > 0);
+      isVerified;
 
   Map<String, dynamic> toFirestore({bool includeDefaults = false}) {
     return {

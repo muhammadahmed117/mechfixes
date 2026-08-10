@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:mechfixes/Admin/admin_dashboard_screen.dart';
 import 'package:mechfixes/Customer/customer_home_screen.dart';
 import 'package:mechfixes/Mechanic/mechanic_dashboard_screen.dart';
+import 'package:mechfixes/Mechanic/mechanic_pending_approval_screen.dart';
 import 'package:mechfixes/Mechanic/mechanic_profile_data.dart';
 import 'package:mechfixes/Mechanic/mechanic_profile_edit_screen.dart';
+import 'package:mechfixes/core/localization/app_language_controller.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
 import 'package:mechfixes/services/auth_service.dart';
 
 
@@ -36,8 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     isUser = widget.initialIsUser;
-    // Kill any persisted Firebase session immediately.
-    FirebaseAuth.instance.signOut();
   }
 
   @override
@@ -97,17 +98,42 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => const CustomerHomeScreen()),
           );
         } else {
-          // Path 3: Mechanic Sign In → dashboard or onboarding
+          // Path 3: Mechanic Sign In → onboarding / pending / dashboard
           final mechanicDoc = await FirebaseFirestore.instance
               .collection('mechanics')
               .doc(uid)
               .get();
           final data = mechanicDoc.data() ?? {};
           final shopName = (data['shopName'] as String?)?.trim() ?? '';
+          final isVerified = data['isVerified'] == true;
+          final status =
+              (data['status'] as String?)?.trim().toLowerCase() ?? 'pending';
+          final isRejected = status == 'rejected';
+          final adminNote = (data['adminNote'] as String?)?.trim() ?? '';
 
           if (!mounted) return;
 
-          if (shopName.isNotEmpty) {
+          if (shopName.isEmpty) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MechanicProfileEditScreen(
+                  initialEmail: _emailController.text.trim(),
+                  isOnboarding: true,
+                ),
+              ),
+            );
+          } else if (!isVerified || isRejected) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MechanicPendingApprovalScreen(
+                  isRejected: isRejected,
+                  adminNote: adminNote,
+                ),
+              ),
+            );
+          } else {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -116,16 +142,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     data,
                     _emailController.text.trim(),
                   ),
-                ),
-              ),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MechanicProfileEditScreen(
-                  initialEmail: _emailController.text.trim(),
-                  isOnboarding: true,
                 ),
               ),
             );
@@ -187,13 +203,78 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppLanguageController.instance,
+      builder: (context, _, __) {
+        final backText = AppText.of(
+          context,
+          english: 'Back',
+          romanUrdu: 'Wapas',
+        );
+        final titleText = AppText.of(
+          context,
+          english: isLogin ? 'Welcome Back' : 'Create Account',
+          romanUrdu: isLogin ? 'Dobara Khush Aamdeed' : 'Account Banayein',
+        );
+        final subtitleText = AppText.of(
+          context,
+          english: isLogin ? 'Sign in to continue' : 'Fill in the details below',
+          romanUrdu: isLogin
+              ? 'Jari rakhne ke liye sign in karein'
+              : 'Neeche apni tafseelat bhar dein',
+        );
+        final userText = AppText.of(
+          context,
+          english: 'User',
+          romanUrdu: 'User',
+        );
+        final mechanicText = AppText.of(
+          context,
+          english: 'Mechanic',
+          romanUrdu: 'Mechanic',
+        );
+        final fullNameText = AppText.of(
+          context,
+          english: 'Full Name',
+          romanUrdu: 'Poora Naam',
+        );
+        final emailText = AppText.of(
+          context,
+          english: 'Email Address',
+          romanUrdu: 'Email Address',
+        );
+        final passwordText = AppText.of(
+          context,
+          english: 'Password',
+          romanUrdu: 'Password',
+        );
+        final submitText = AppText.of(
+          context,
+          english: isLogin ? 'Sign In' : 'Create Account',
+          romanUrdu: isLogin ? 'Sign In' : 'Account Banayein',
+        );
+        final switchPrefix = AppText.of(
+          context,
+          english: isLogin
+              ? "Don't have an account? "
+              : 'Already have an account? ',
+          romanUrdu: isLogin
+              ? 'Kya account nahi hai? '
+              : 'Kya pehle se account hai? ',
+        );
+        final switchAction = AppText.of(
+          context,
+          english: isLogin ? 'Sign Up' : 'Sign In',
+          romanUrdu: isLogin ? 'Sign Up' : 'Sign In',
+        );
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF3F3F3),
+          body: SafeArea(
+            child: Stack(
               children: [
+                Column(
+                  children: [
                 // Top bar
                 Container(
                   height: 52,
@@ -201,16 +282,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: _primary,
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: InkWell(
-                    onTap: _isLoading ? null : () => Navigator.pop(context),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Text('Back', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
+                  child: Row(
+                    children: [
+                      InkWell(
+                        onTap: _isLoading ? null : () => Navigator.pop(context),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            Text(backText, style: const TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _isLoading ? null : AppLanguageController.instance.toggle,
+                        icon: const Icon(Icons.translate, color: Colors.white, size: 18),
+                        label: Text(
+                          AppText.isEnglish ? 'Roman Urdu' : 'English',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -256,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 20),
 
                               Text(
-                                isLogin ? 'Welcome Back' : 'Create Account',
+                                titleText,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 24,
@@ -265,9 +359,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                isLogin
-                                    ? 'Sign in to continue'
-                                    : 'Fill in the details below',
+                                subtitleText,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(color: Colors.grey),
                               ),
@@ -275,8 +367,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // ── User / Mechanic toggle ──
                               _segmentedToggle(
-                                leftLabel: 'User',
-                                rightLabel: 'Mechanic',
+                                leftLabel: userText,
+                                rightLabel: mechanicText,
                                 leftSelected: isUser,
                                 onLeft: () => setState(() {
                                   isUser = true;
@@ -291,7 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // ── Full Name (sign-up only) ──
                               if (!isLogin) ...[
-                                _label('Full Name'),
+                                _label(fullNameText),
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: _nameController,
@@ -299,13 +391,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                   textCapitalization: TextCapitalization.words,
                                   enabled: !_isLoading,
                                   autovalidateMode: AutovalidateMode.onUserInteraction,
-                                  decoration: _inputDeco('John Doe'),
+                                  decoration: _inputDeco(
+                                    AppText.of(
+                                      context,
+                                      english: 'John Doe',
+                                      romanUrdu: 'Ahmed Khan',
+                                    ),
+                                  ),
                                   validator: (v) {
                                     if (v == null || v.trim().isEmpty) {
-                                      return 'Full name is required.';
+                                      return AppText.of(
+                                        context,
+                                        english: 'Full name is required.',
+                                        romanUrdu: 'Poora naam lazmi hai.',
+                                      );
                                     }
                                     if (v.trim().length < 2) {
-                                      return 'Name must be at least 2 characters.';
+                                      return AppText.of(
+                                        context,
+                                        english: 'Name must be at least 2 characters.',
+                                        romanUrdu: 'Naam kam az kam 2 haroof ka ho.',
+                                      );
                                     }
                                     return null;
                                   },
@@ -314,7 +420,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
 
                               // ── Email ──
-                              _label('Email Address'),
+                              _label(emailText),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: _emailController,
@@ -325,18 +431,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: _inputDeco('you@example.com'),
                                 validator: (v) {
                                   if (v == null || v.trim().isEmpty) {
-                                    return 'Email is required.';
+                                    return AppText.of(
+                                      context,
+                                      english: 'Email is required.',
+                                      romanUrdu: 'Email lazmi hai.',
+                                    );
                                   }
                                   final ok = RegExp(
                                     r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$',
                                   ).hasMatch(v.trim());
-                                  return ok ? null : 'Enter a valid email address.';
+                                  return ok
+                                      ? null
+                                      : AppText.of(
+                                          context,
+                                          english: 'Enter a valid email address.',
+                                          romanUrdu: 'Sahi email address likhein.',
+                                        );
                                 },
                               ),
                               const SizedBox(height: 15),
 
                               // ── Password ──
-                              _label('Password'),
+                              _label(passwordText),
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: _passwordController,
@@ -346,7 +462,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 enabled: !_isLoading,
                                 autovalidateMode: AutovalidateMode.onUserInteraction,
                                 decoration: _inputDeco(
-                                  isLogin ? 'Enter your password' : 'Min. 6 characters',
+                                  AppText.of(
+                                    context,
+                                    english: isLogin
+                                        ? 'Enter your password'
+                                        : 'Min. 6 characters',
+                                    romanUrdu: isLogin
+                                        ? 'Apna password likhein'
+                                        : 'Kam az kam 6 characters',
+                                  ),
                                   suffixIcon: IconButton(
                                     onPressed: _isLoading
                                         ? null
@@ -360,10 +484,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 validator: (v) {
                                   if (v == null || v.isEmpty) {
-                                    return 'Password is required.';
+                                    return AppText.of(
+                                      context,
+                                      english: 'Password is required.',
+                                      romanUrdu: 'Password lazmi hai.',
+                                    );
                                   }
                                   if (!isLogin && v.length < 6) {
-                                    return 'Password must be at least 6 characters.';
+                                    return AppText.of(
+                                      context,
+                                      english: 'Password must be at least 6 characters.',
+                                      romanUrdu: 'Password kam az kam 6 characters ka ho.',
+                                    );
                                   }
                                   return null;
                                 },
@@ -393,7 +525,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                         )
                                       : Text(
-                                          isLogin ? 'Sign In' : 'Create Account',
+                                          submitText,
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontSize: 15,
@@ -410,9 +542,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    isLogin
-                                        ? "Don't have an account? "
-                                        : 'Already have an account? ',
+                                    switchPrefix,
                                     style: const TextStyle(color: Colors.grey),
                                   ),
                                   GestureDetector(
@@ -426,7 +556,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                               _passwordController.clear();
                                             }),
                                     child: Text(
-                                      isLogin ? 'Sign Up' : 'Sign In',
+                                      switchAction,
                                       style: const TextStyle(
                                         color: _primary,
                                         fontWeight: FontWeight.bold,
@@ -442,20 +572,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                  ],
+                ),
+                if (_isLoading)
+                  const ColoredBox(
+                    color: Color(0x44000000),
+                    child: Center(
+                      child: CircularProgressIndicator(color: _primary),
+                    ),
+                  ),
               ],
             ),
-
-            // Loading overlay
-            if (_isLoading)
-              const ColoredBox(
-                color: Color(0x44000000),
-                child: Center(
-                  child: CircularProgressIndicator(color: _primary),
-                ),
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

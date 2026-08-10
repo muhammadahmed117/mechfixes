@@ -31,7 +31,9 @@ class AuthService {
         'email': email.trim(),
         'isVerified': false,
         'isDemo': false,
+        'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       return credential;
@@ -41,6 +43,11 @@ class AuthService {
     } catch (e) {
       rethrow; // already an Exception; don't double-wrap
     }
+  }
+
+  Future<bool> _isAdminUid(String uid) async {
+    final adminDoc = await _db.collection('admins').doc(uid).get();
+    return adminDoc.exists;
   }
 
   // ─── Mechanic sign-in ─────────────────────────────────────────────────────
@@ -55,12 +62,28 @@ class AuthService {
         password: password,
       );
 
-      // Explicit null-guard: if Firebase returns without a user, treat as failure
-      if (credential.user == null) {
+      final user = credential.user;
+      if (user == null) {
         throw Exception('Sign-in failed. No user returned by Firebase.');
       }
 
-      return credential;
+      if (await _isAdminUid(user.uid)) return credential;
+
+      final mechanicDoc =
+          await _db.collection('mechanics').doc(user.uid).get();
+      if (mechanicDoc.exists) return credential;
+
+      final userDoc = await _db.collection('users').doc(user.uid).get();
+      await _auth.signOut();
+
+      if (userDoc.exists) {
+        throw Exception(
+          'This email is registered as a customer. Switch to User and sign in.',
+        );
+      }
+      throw Exception(
+        'No mechanic account found for this email. Please sign up as Mechanic first.',
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_translate(e.code));
     } catch (e) {
@@ -72,9 +95,32 @@ class AuthService {
 
   Future<void> signInUser(String email, String password) async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
         password: password,
+      );
+      final user = cred.user;
+      if (user == null) {
+        throw Exception('Sign-in failed. No user returned by Firebase.');
+      }
+
+      // Admins may sign in from either tab; login screen routes them.
+      if (await _isAdminUid(user.uid)) return;
+
+      final userDoc = await _db.collection('users').doc(user.uid).get();
+      if (userDoc.exists) return;
+
+      final mechanicDoc =
+          await _db.collection('mechanics').doc(user.uid).get();
+      await _auth.signOut();
+
+      if (mechanicDoc.exists) {
+        throw Exception(
+          'This email is registered as a mechanic. Switch to Mechanic and sign in.',
+        );
+      }
+      throw Exception(
+        'No customer account found for this email. Please sign up as User first.',
       );
     } on FirebaseAuthException catch (e) {
       throw Exception(_translate(e.code));
@@ -86,15 +132,15 @@ class AuthService {
   Future<void> signUpUser(String email, String password, String fullName) async {
     try {
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
       await FirebaseFirestore.instance
           .collection('users')
           .doc(cred.user!.uid)
           .set({
-        'email': email,
-        'fullName': fullName,
+        'email': email.trim(),
+        'fullName': fullName.trim(),
         'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -108,12 +154,32 @@ class AuthService {
   Future<void> signInMechanic(String email, String password) async {
     try {
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
-      if (cred.user == null) {
+      final user = cred.user;
+      if (user == null) {
         throw Exception('Sign-in failed. No user returned by Firebase.');
       }
+
+      // Admins may sign in from either tab; login screen routes them.
+      if (await _isAdminUid(user.uid)) return;
+
+      final mechanicDoc =
+          await _db.collection('mechanics').doc(user.uid).get();
+      if (mechanicDoc.exists) return;
+
+      final userDoc = await _db.collection('users').doc(user.uid).get();
+      await _auth.signOut();
+
+      if (userDoc.exists) {
+        throw Exception(
+          'This email is registered as a customer. Switch to User and sign in.',
+        );
+      }
+      throw Exception(
+        'No mechanic account found for this email. Please sign up as Mechanic first.',
+      );
     } on FirebaseAuthException catch (e) {
       throw Exception(_translate(e.code));
     }
@@ -147,7 +213,9 @@ class AuthService {
         'selectedSkills': [],
         'isVerified': false,
         'isDemo': false,
+        'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } on FirebaseAuthException catch (e) {
       throw Exception(_translate(e.code));

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -49,7 +51,8 @@ class _ChatScreenState extends State<ChatScreen> {
             .collection('mechanics')
             .doc(_currentUserId)
             .get();
-        currentUserName = (mechanicDoc.data()?['fullName'] as String?) ??
+        currentUserName =
+            (mechanicDoc.data()?['fullName'] as String?) ??
             (mechanicDoc.data()?['shopName'] as String?) ??
             'User';
       }
@@ -72,18 +75,24 @@ class _ChatScreenState extends State<ChatScreen> {
           .doc(_chatRoomId)
           .collection('messages')
           .add({
-        'senderId': _currentUserId,
-        'receiverId': widget.receiverId,
-        'text': text,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+            'senderId': _currentUserId,
+            'receiverId': widget.receiverId,
+            'text': text,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
       _textController.clear();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to send message. Please try again.'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Failed to send message. Please try again.',
+              romanUrdu: 'Paigham bhejna nakaam raha. Dobara koshish karein.',
+            ),
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -110,6 +119,7 @@ class _ChatScreenState extends State<ChatScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: const [LanguageToggleButton(compact: true)],
       ),
       body: Column(
         children: [
@@ -124,19 +134,21 @@ class _ChatScreenState extends State<ChatScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF3B82F6),
-                    ),
+                    child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
                   );
                 }
 
                 final docs = snapshot.data?.docs ?? [];
 
                 if (docs.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'No messages yet',
-                      style: TextStyle(
+                      AppText.of(
+                        context,
+                        english: 'No messages yet',
+                        romanUrdu: 'Abhi koi paigham nahi',
+                      ),
+                      style: const TextStyle(
                         color: Color(0xFF667085),
                         fontSize: 14,
                       ),
@@ -155,8 +167,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     final isMe = senderId == _currentUserId;
 
                     return Align(
-                      alignment:
-                          isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.symmetric(
@@ -167,9 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           maxWidth: MediaQuery.of(context).size.width * 0.75,
                         ),
                         decoration: BoxDecoration(
-                          color: isMe
-                              ? const Color(0xFF3B82F6)
-                              : Colors.white,
+                          color: isMe ? const Color(0xFF3B82F6) : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -190,9 +201,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Color(0xFFE5E7EB)),
-              ),
+              border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
             ),
             child: SafeArea(
               top: false,
@@ -202,7 +211,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: TextField(
                       controller: _textController,
                       decoration: InputDecoration(
-                        hintText: 'Type a message...',
+                        hintText: AppText.of(
+                          context,
+                          english: 'Type a message...',
+                          romanUrdu: 'Paigham likhein...',
+                        ),
                         filled: true,
                         fillColor: const Color(0xFFF3F5F9),
                         contentPadding: const EdgeInsets.symmetric(
@@ -219,10 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: _sendMessage,
-                    icon: const Icon(
-                      Icons.send,
-                      color: Color(0xFF3B82F6),
-                    ),
+                    icon: const Icon(Icons.send, color: Color(0xFF3B82F6)),
                   ),
                 ],
               ),

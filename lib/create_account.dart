@@ -1,10 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mechfixes/Customer/customer_home_screen.dart';
-import 'package:mechfixes/Mechanic/mechanic_dashboard_screen.dart';
-import 'package:mechfixes/Mechanic/mechanic_profile_data.dart';
+import 'package:mechfixes/Mechanic/mechanic_pending_approval_screen.dart';
 import 'package:mechfixes/Mechanic/mechanic_profile_edit_screen.dart';
 import 'package:mechfixes/core/auth/auth_validators.dart';
+import 'package:mechfixes/core/localization/app_language_controller.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
 import 'package:mechfixes/services/auth_service.dart';
 import 'package:mechfixes/services/mechanic_auth_service.dart';
 
@@ -140,11 +141,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => MechanicDashboardScreen(
-            profileData: MechanicProfileData(
-              email: result.profile.email,
-              shopName: result.profile.shopName,
-            ),
+          builder: (context) => MechanicPendingApprovalScreen(
+            isRejected: result.profile.isRejected,
+            adminNote: result.profile.adminNote,
           ),
         ),
       );
@@ -176,29 +175,50 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppLanguageController.instance,
+      builder: (context, _, __) {
+        final backText = AppText.of(
+          context,
+          english: 'Back',
+          romanUrdu: 'Wapas',
+        );
+        return Scaffold(
+          backgroundColor: const Color(0xFFF3F3F3),
+          body: SafeArea(
+            child: Stack(
               children: [
+                Column(
+                  children: [
                 Container(
                   height: 52,
                   width: double.infinity,
                   color: const Color(0xFF1F3FAF),
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: InkWell(
-                    onTap: isLoading ? null : () => Navigator.pop(context),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Text('Back', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
+                  child: Row(
+                    children: [
+                      InkWell(
+                        onTap: isLoading ? null : () => Navigator.pop(context),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            Text(backText, style: const TextStyle(color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: isLoading ? null : AppLanguageController.instance.toggle,
+                        icon: const Icon(Icons.translate, color: Colors.white, size: 18),
+                        label: Text(
+                          AppText.isEnglish ? 'Roman Urdu' : 'English',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -244,19 +264,27 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 24),
-                                const Text(
-                                  'Create Account',
-                                  style: TextStyle(
+                                Text(
+                                  AppText.of(
+                                    context,
+                                    english: 'Create Account',
+                                    romanUrdu: 'Account Banayein',
+                                  ),
+                                  style: const TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF0E1B4D),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
-                                  'Join us to get started with vehicle care',
+                                Text(
+                                  AppText.of(
+                                    context,
+                                    english: 'Join us to get started with vehicle care',
+                                    romanUrdu: 'Gaari ki dekh bhaal ke liye hamare sath shamil hon',
+                                  ),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     color: Color(0xFF4F5B7A),
                                   ),
@@ -285,7 +313,15 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                             ),
-                                            child: const Center(child: Text('User')),
+                                            child: Center(
+                                              child: Text(
+                                                AppText.of(
+                                                  context,
+                                                  english: 'User',
+                                                  romanUrdu: 'User',
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -305,8 +341,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                             ),
-                                            child: const Center(
-                                              child: Text('Mechanic'),
+                                            child: Center(
+                                              child: Text(
+                                                AppText.of(
+                                                  context,
+                                                  english: 'Mechanic',
+                                                  romanUrdu: 'Mechanic',
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -315,16 +357,32 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
-                                _buildLabel('Full Name'),
+                                _buildLabel(
+                                  AppText.of(
+                                    context,
+                                    english: 'Full Name',
+                                    romanUrdu: 'Poora Naam',
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: fullNameController,
-                                  hint: 'John Doe',
+                                  hint: AppText.of(
+                                    context,
+                                    english: 'John Doe',
+                                    romanUrdu: 'Ahmed Khan',
+                                  ),
                                   obscureText: false,
                                   validator: AuthValidators.validateFullName,
                                 ),
                                 const SizedBox(height: 18),
-                                _buildLabel('Email Address'),
+                                _buildLabel(
+                                  AppText.of(
+                                    context,
+                                    english: 'Email Address',
+                                    romanUrdu: 'Email Address',
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: emailController,
@@ -334,11 +392,21 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   validator: AuthValidators.validateEmail,
                                 ),
                                 const SizedBox(height: 18),
-                                _buildLabel('Password'),
+                                _buildLabel(
+                                  AppText.of(
+                                    context,
+                                    english: 'Password',
+                                    romanUrdu: 'Password',
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: passwordController,
-                                  hint: 'Create a strong password',
+                                  hint: AppText.of(
+                                    context,
+                                    english: 'Create a strong password',
+                                    romanUrdu: 'Mazboot password banayein',
+                                  ),
                                   obscureText: obscurePassword,
                                   suffixIcon: obscurePassword
                                       ? Icons.visibility_off_outlined
@@ -355,11 +423,21 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-                                _buildLabel('Confirm Password'),
+                                _buildLabel(
+                                  AppText.of(
+                                    context,
+                                    english: 'Confirm Password',
+                                    romanUrdu: 'Password Dobara Likhein',
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 _buildTextField(
                                   controller: confirmPasswordController,
-                                  hint: 'Re-enter your password',
+                                  hint: AppText.of(
+                                    context,
+                                    english: 'Re-enter your password',
+                                    romanUrdu: 'Apna password dobara likhein',
+                                  ),
                                   obscureText: obscureConfirmPassword,
                                   suffixIcon: obscureConfirmPassword
                                       ? Icons.visibility_off_outlined
@@ -396,24 +474,51 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                       child: Padding(
                                         padding: const EdgeInsets.only(top: 10),
                                         child: RichText(
-                                          text: const TextSpan(
-                                            style: TextStyle(
+                                          text: TextSpan(
+                                            style: const TextStyle(
                                               fontSize: 13,
                                               color: Color(0xFF4F5B7A),
                                             ),
                                             children: [
-                                              TextSpan(text: 'I agree to the '),
                                               TextSpan(
-                                                text: 'Terms of Service',
-                                                style: TextStyle(
+                                                text: AppText.of(
+                                                  context,
+                                                  english: 'I agree to the ',
+                                                  romanUrdu: 'Main ',
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: AppText.of(
+                                                  context,
+                                                  english: 'Terms of Service',
+                                                  romanUrdu: 'Terms of Service',
+                                                ),
+                                                style: const TextStyle(
                                                   color: Color(0xFF1F3FAF),
                                                 ),
                                               ),
-                                              TextSpan(text: ' and '),
                                               TextSpan(
-                                                text: 'Privacy Policy',
-                                                style: TextStyle(
+                                                text: AppText.of(
+                                                  context,
+                                                  english: ' and ',
+                                                  romanUrdu: ' aur ',
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: AppText.of(
+                                                  context,
+                                                  english: 'Privacy Policy',
+                                                  romanUrdu: 'Privacy Policy',
+                                                ),
+                                                style: const TextStyle(
                                                   color: Color(0xFF1F3FAF),
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: AppText.of(
+                                                  context,
+                                                  english: '.',
+                                                  romanUrdu: ' se ittefaq karta hoon.',
                                                 ),
                                               ),
                                             ],
@@ -441,7 +546,11 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                       ),
                                     ),
                                     child: Text(
-                                      'Create Account',
+                                      AppText.of(
+                                        context,
+                                        english: 'Create Account',
+                                        romanUrdu: 'Account Banayein',
+                                      ),
                                       style: TextStyle(
                                         color: _canCreateAccount && !isLoading
                                             ? Colors.white
@@ -467,14 +576,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                           );
                                         },
                                   child: RichText(
-                                    text: const TextSpan(
-                                      style: TextStyle(
+                                    text: TextSpan(
+                                      style: const TextStyle(
                                         fontSize: 14,
                                         color: Color(0xFF4F5B7A),
                                       ),
                                       children: [
-                                        TextSpan(text: 'Already have an account? '),
                                         TextSpan(
+                                          text: AppText.of(
+                                            context,
+                                            english: 'Already have an account? ',
+                                            romanUrdu: 'Kya pehle se account hai? ',
+                                          ),
+                                        ),
+                                        const TextSpan(
                                           text: 'Sign in',
                                           style: TextStyle(
                                             color: Color(0xFF1F3FAF),
@@ -493,18 +608,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     ),
                   ),
                 ),
+                  ],
+                ),
+                if (isLoading)
+                  const ColoredBox(
+                    color: Color(0x33000000),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Color(0xFF1F3FAF)),
+                    ),
+                  ),
               ],
             ),
-            if (isLoading)
-              const ColoredBox(
-                color: Color(0x33000000),
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF1F3FAF)),
-                ),
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

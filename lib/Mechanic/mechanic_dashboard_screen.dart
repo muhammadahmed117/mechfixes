@@ -8,17 +8,22 @@ import 'package:mechfixes/Mechanic/mechanic_profile_edit_screen.dart';
 import 'package:mechfixes/chat/screens/chat_screen.dart';
 import 'package:mechfixes/core/navigation/auth_navigation.dart';
 import 'package:mechfixes/core/session/app_session.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class MechanicDashboardScreen extends StatefulWidget {
   const MechanicDashboardScreen({
     super.key,
-    this.profileData = const MechanicProfileData(email: "eliteauto@example.com"),
+    this.profileData = const MechanicProfileData(
+      email: "eliteauto@example.com",
+    ),
   });
 
   final MechanicProfileData profileData;
 
   @override
-  State<MechanicDashboardScreen> createState() => _MechanicDashboardScreenState();
+  State<MechanicDashboardScreen> createState() =>
+      _MechanicDashboardScreenState();
 }
 
 class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
@@ -46,13 +51,16 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
 
-      final doc =
-          await FirebaseFirestore.instance.collection('mechanics').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('mechanics')
+          .doc(uid)
+          .get();
 
       if (!doc.exists || !mounted) return;
 
       final data = doc.data()!;
-      final specialties = (data['specialties'] as List<dynamic>?)
+      final specialties =
+          (data['specialties'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
@@ -62,7 +70,8 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
           email: data['email'] as String? ?? _profileData.email,
           shopName: data['shopName'] as String? ?? '',
           phone: data['phone'] as String? ?? '',
-          address: (data['location'] as String?) ??
+          address:
+              (data['location'] as String?) ??
               (data['address'] as String?) ??
               '',
           specialties: specialties,
@@ -106,15 +115,29 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Shop details updated successfully")),
+      SnackBar(
+        content: Text(
+          AppText.of(
+            context,
+            english: "Shop details updated successfully",
+            romanUrdu: "Dukaan ki maloomat kamyabi se update ho gayi",
+          ),
+        ),
+      ),
     );
   }
 
   Future<void> _openAddSkillsServices() async {
     if (profileData.specialties.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add your specialty in shop profile first'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Add your specialty in shop profile first',
+              romanUrdu: 'Pehle shop profile mein apni specialty add karein',
+            ),
+          ),
         ),
       );
       return;
@@ -154,7 +177,15 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${result.length} services saved')),
+      SnackBar(
+        content: Text(
+          AppText.of(
+            context,
+            english: '${result.length} services saved',
+            romanUrdu: '${result.length} services save ho gayin',
+          ),
+        ),
+      ),
     );
   }
 
@@ -181,8 +212,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _sortedReviewDocs(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
-    final sorted =
-        List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs);
+    final sorted = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs);
     sorted.sort((a, b) {
       final aTime = a.data()['createdAt'];
       final bTime = b.data()['createdAt'];
@@ -234,10 +264,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               ),
               child: Text(
                 loadError,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFFB42318),
-                ),
+                style: const TextStyle(fontSize: 12, color: Color(0xFFB42318)),
               ),
             ),
           ],
@@ -245,7 +272,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             children: [
               Expanded(
                 child: _DashboardStatCard(
-                  title: "Total Reviews",
+                  title: AppText.of(
+                    context,
+                    english: "Total Reviews",
+                    romanUrdu: "Kul Reviews",
+                  ),
                   value: totalReviews.toString(),
                   icon: Icons.reviews_outlined,
                 ),
@@ -253,7 +284,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _DashboardStatCard(
-                  title: "Average Rating",
+                  title: AppText.of(
+                    context,
+                    english: "Average Rating",
+                    romanUrdu: "Ausat Rating",
+                  ),
                   value: averageRating.toStringAsFixed(1),
                   icon: Icons.star_outline,
                 ),
@@ -265,7 +300,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             children: [
               Expanded(
                 child: _DashboardStatCard(
-                  title: "This Month",
+                  title: AppText.of(
+                    context,
+                    english: "This Month",
+                    romanUrdu: "Is Mahine",
+                  ),
                   value: thisMonthReviews.toString(),
                   icon: Icons.calendar_month_outlined,
                 ),
@@ -273,7 +312,11 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _DashboardStatCard(
-                  title: "Pending Replies",
+                  title: AppText.of(
+                    context,
+                    english: "Pending Replies",
+                    romanUrdu: "Baaki Jawabat",
+                  ),
                   value: pendingReplies.toString(),
                   icon: Icons.chat_bubble_outline,
                 ),
@@ -287,7 +330,13 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             child: OutlinedButton.icon(
               onPressed: _openAddSkillsServices,
               icon: const Icon(Icons.build_circle_outlined, size: 18),
-              label: const Text('Add Skills / Services'),
+              label: Text(
+                AppText.of(
+                  context,
+                  english: 'Add Skills / Services',
+                  romanUrdu: 'Skills / Services Add Karein',
+                ),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF1F3FAF),
                 side: const BorderSide(color: Color(0xFF1F3FAF)),
@@ -306,13 +355,17 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
               border: Border.all(color: const Color(0xFFD7DDE8)),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.star, color: Colors.amber),
                 SizedBox(width: 8),
                 Text(
-                  "Customer Reviews",
-                  style: TextStyle(
+                  AppText.of(
+                    context,
+                    english: "Customer Reviews",
+                    romanUrdu: "Customer Reviews",
+                  ),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF101828),
@@ -326,11 +379,18 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                loadError == null ? 'No reviews yet' : 'Reviews unavailable',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 14,
-                ),
+                loadError == null
+                    ? AppText.of(
+                        context,
+                        english: 'No reviews yet',
+                        romanUrdu: 'Abhi koi review nahi',
+                      )
+                    : AppText.of(
+                        context,
+                        english: 'Reviews unavailable',
+                        romanUrdu: 'Reviews dastiyab nahi',
+                      ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
               ),
             )
           else
@@ -342,7 +402,8 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                 final doc = docs[index];
                 final data = doc.data();
                 final userName = data['userName'] as String? ?? 'Customer';
-                final reviewText = data['reviewText'] as String? ??
+                final reviewText =
+                    data['reviewText'] as String? ??
                     data['review'] as String? ??
                     '';
                 final rating = _readRating(data['rating']).round();
@@ -406,10 +467,9 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
   }
 
   Future<void> _markReviewAsRead(String reviewId) async {
-    await FirebaseFirestore.instance
-        .collection('reviews')
-        .doc(reviewId)
-        .update({'isRead': true});
+    await FirebaseFirestore.instance.collection('reviews').doc(reviewId).update(
+      {'isRead': true},
+    );
   }
 
   @override
@@ -429,24 +489,36 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                     color: const Color(0xFF1F3FAF),
                     child: Row(
                       children: [
-                        const Icon(Icons.build_circle_outlined,
-                            color: Colors.white, size: 26),
+                        const Icon(
+                          Icons.build_circle_outlined,
+                          color: Colors.white,
+                          size: 26,
+                        ),
                         const SizedBox(width: 10),
-                        const Column(
+                        Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Mechanic Dashboard",
-                              style: TextStyle(
+                              AppText.of(
+                                context,
+                                english: "Mechanic Dashboard",
+                                romanUrdu: "Mechanic Dashboard",
+                              ),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
-                              "Manage shop and customer reviews",
-                              style: TextStyle(
+                              AppText.of(
+                                context,
+                                english: "Manage shop and customer reviews",
+                                romanUrdu:
+                                    "Shop aur customer reviews manage karein",
+                              ),
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -454,6 +526,7 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                           ],
                         ),
                         const Spacer(),
+                        const LanguageToggleButton(compact: true),
                         IconButton(
                           onPressed: () {
                             Navigator.push(
@@ -471,13 +544,19 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
                         ),
                         IconButton(
                           onPressed: _openEditProfile,
-                          icon: const Icon(Icons.settings_outlined,
-                              color: Colors.white),
+                          icon: const Icon(
+                            Icons.settings_outlined,
+                            color: Colors.white,
+                          ),
                         ),
                         IconButton(
                           onPressed: () => logoutToLogin(context),
                           icon: const Icon(Icons.logout, color: Colors.white),
-                          tooltip: 'Logout',
+                          tooltip: AppText.of(
+                            context,
+                            english: 'Logout',
+                            romanUrdu: 'Logout',
+                          ),
                         ),
                       ],
                     ),
@@ -497,14 +576,21 @@ class _MechanicDashboardScreenState extends State<MechanicDashboardScreen> {
 
                         if (snapshot.hasError) {
                           return _buildReviewsBody(
-                            docs: <QueryDocumentSnapshot<Map<String, dynamic>>>[],
-                            loadError:
-                                'Could not load reviews. Check Firestore rules for the reviews collection.',
+                            docs:
+                                <QueryDocumentSnapshot<Map<String, dynamic>>>[],
+                            loadError: AppText.of(
+                              context,
+                              english:
+                                  'Could not load reviews. Check Firestore rules for the reviews collection.',
+                              romanUrdu:
+                                  'Reviews load nahi ho sake. Firestore rules check karein.',
+                            ),
                           );
                         }
 
-                        final docs =
-                            _sortedReviewDocs(snapshot.data?.docs ?? []);
+                        final docs = _sortedReviewDocs(
+                          snapshot.data?.docs ?? [],
+                        );
 
                         return _buildReviewsBody(docs: docs);
                       },
@@ -554,10 +640,7 @@ class _DashboardStatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF667085),
-            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF667085)),
           ),
         ],
       ),
@@ -580,8 +663,7 @@ class _ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final int rating = review["rating"] as int;
     final String name = review["name"] as String;
-    final String initial =
-        name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final String initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     return Container(
       width: double.infinity,
@@ -633,11 +715,12 @@ class _ReviewCard extends StatelessWidget {
               Row(
                 children: List.generate(
                   5,
-                      (index) => Icon(
+                  (index) => Icon(
                     Icons.star,
                     size: 16,
-                    color:
-                    index < rating ? Colors.amber : const Color(0xFFD0D5DD),
+                    color: index < rating
+                        ? Colors.amber
+                        : const Color(0xFFD0D5DD),
                   ),
                 ),
               ),
@@ -663,12 +746,24 @@ class _ReviewCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text("Reply"),
+                child: Text(
+                  AppText.of(
+                    context,
+                    english: "Reply",
+                    romanUrdu: "Jawab Dein",
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               TextButton(
                 onPressed: onMarkAsRead,
-                child: const Text("Mark as Read"),
+                child: Text(
+                  AppText.of(
+                    context,
+                    english: "Mark as Read",
+                    romanUrdu: "Parha Hua Mark Karein",
+                  ),
+                ),
               ),
             ],
           ),

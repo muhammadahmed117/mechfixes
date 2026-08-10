@@ -1,6 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mechfixes/Admin/widgets/admin_common_widgets.dart';
+import 'package:mechfixes/Admin/widgets/admin_dialogs.dart';
+import 'package:mechfixes/core/admin/admin_validators.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
+import 'package:mechfixes/data/models/complaint_record.dart';
 import 'package:mechfixes/data/models/mechanic_record.dart';
 import 'package:mechfixes/data/models/user_record.dart';
 import 'package:mechfixes/data/parsers/firestore_parsers.dart';
@@ -20,20 +26,22 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     with SingleTickerProviderStateMixin {
-  static const _scaffoldBg = Color(0xFFF3F5F9);
-  static const _appBarBg = Color(0xFF212936);
-
   late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _checkingAdmin = true;
+  bool _isAuthorized = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+      setState(
+        () => _searchQuery = _searchController.text.trim().toLowerCase(),
+      );
     });
+    _verifyAdminSession();
   }
 
   @override
@@ -43,69 +51,153 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     super.dispose();
   }
 
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+  Future<void> _verifyAdminSession() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      _redirectToLogin();
+      return;
+    }
 
-    if (!mounted) return;
+    try {
+      final adminDoc = await FirebaseFirestore.instance
+          .collection('admins')
+          .doc(user.uid)
+          .get();
 
+      if (!mounted) return;
+
+      if (!adminDoc.exists) {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        _redirectToLogin();
+        return;
+      }
+
+      setState(() {
+        _isAuthorized = true;
+        _checkingAdmin = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      _redirectToLogin();
+    }
+  }
+
+  void _redirectToLogin() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }
 
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    _redirectToLogin();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_checkingAdmin || !_isAuthorized) {
+      return const Scaffold(
+        backgroundColor: AdminTheme.scaffold,
+        body: Center(
+          child: CircularProgressIndicator(color: AdminTheme.primary),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: _scaffoldBg,
+      backgroundColor: AdminTheme.scaffold,
       appBar: AppBar(
-        backgroundColor: _appBarBg,
         elevation: 0,
+        scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Admin Portal',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        backgroundColor: AdminTheme.primary,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AdminTheme.headerGradient),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppText.of(
+                context,
+                english: 'Admin Portal',
+                romanUrdu: 'Admin Portal',
+              ),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              AppText.of(
+                context,
+                english: 'Manage mechanics, users & reports',
+                romanUrdu: 'Mechanics, users aur reports manage karein',
+              ),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
         actions: [
+          const LanguageToggleButton(compact: true),
           IconButton(
             icon: const Icon(Icons.logout_outlined, color: Colors.white),
-            tooltip: 'Logout',
+            tooltip: AppText.of(
+              context,
+              english: 'Logout',
+              romanUrdu: 'Logout',
+            ),
             onPressed: _logout,
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(96),
+          preferredSize: const Size.fromHeight(108),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   controller: _searchController,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: AdminTheme.ink, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Search by name or email…',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.55)),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: Colors.white.withValues(alpha: 0.7),
+                    hintText: AppText.of(
+                      context,
+                      english: 'Search by name or email…',
+                      romanUrdu: 'Naam ya email se talash karein…',
+                    ),
+                    hintStyle: TextStyle(
+                      color: AdminTheme.muted.withValues(alpha: 0.9),
+                      fontSize: 13,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AdminTheme.primary,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(
-                              Icons.clear,
-                              color: Colors.white.withValues(alpha: 0.7),
+                            icon: const Icon(
+                              Icons.clear_rounded,
+                              color: AdminTheme.muted,
                             ),
                             onPressed: _searchController.clear,
                           )
                         : null,
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.12),
+                    fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
                     ),
                   ),
@@ -114,36 +206,138 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               TabBar(
                 controller: _tabController,
                 indicatorColor: Colors.white,
+                indicatorWeight: 3,
                 labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
+                unselectedLabelColor: Colors.white.withValues(alpha: 0.62),
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                tabs: const [
-                  Tab(text: 'Pending'),
-                  Tab(text: 'Mechanics'),
-                  Tab(text: 'Users'),
-                  Tab(text: 'Complaints'),
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                tabs: [
+                  Tab(
+                    height: 46,
+                    child: _AdminTabLabel(
+                      icon: Icons.hourglass_top_rounded,
+                      label: AppText.of(
+                        context,
+                        english: 'Pending',
+                        romanUrdu: 'Baaki',
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    height: 46,
+                    child: _AdminTabLabel(
+                      icon: Icons.build_circle_outlined,
+                      label: AppText.of(
+                        context,
+                        english: 'Mechanics',
+                        romanUrdu: 'Mechanics',
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    height: 46,
+                    child: _AdminTabLabel(
+                      icon: Icons.people_alt_outlined,
+                      label: AppText.of(
+                        context,
+                        english: 'Users',
+                        romanUrdu: 'Users',
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    height: 46,
+                    child: _AdminTabLabel(
+                      icon: Icons.report_outlined,
+                      label: AppText.of(
+                        context,
+                        english: 'Complaints',
+                        romanUrdu: 'Shikayaat',
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _PendingTab(searchQuery: _searchQuery),
-          const _ApprovedMechanicsTab(),
-          _UsersTab(searchQuery: _searchQuery),
-          const _ComplaintsTab(),
-        ],
+      body: _AdminPortalBody(
+        tabController: _tabController,
+        searchQuery: _searchQuery,
+      ),
+    );
+  }
+}
+
+class _AdminTabLabel extends StatelessWidget {
+  const _AdminTabLabel({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16),
+        const SizedBox(width: 6),
+        Text(label),
+      ],
+    );
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  const _SortChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            gradient: selected ? AdminTheme.headerGradient : null,
+            color: selected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? Colors.transparent : const Color(0xFFD0D5DD),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AdminTheme.ink,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared helpers & widgets
+// Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 bool _matchesQuery(String query, List<String> fields) {
@@ -154,10 +348,9 @@ bool _matchesQuery(String query, List<String> fields) {
   return false;
 }
 
-String _str(dynamic value, [String fallback = '—']) {
-  if (value == null) return fallback;
-  final text = value.toString().trim();
-  return text.isEmpty ? fallback : text;
+String _displayOrDash(String value) {
+  final text = value.trim();
+  return text.isEmpty ? '—' : text;
 }
 
 String _formatDate(DateTime? date) {
@@ -177,29 +370,143 @@ String _mechanicSpecialization(MechanicRecord mechanic) {
   return '—';
 }
 
-Future<void> _launchEmail(String email) async {
-  final uri = Uri(scheme: 'mailto', path: email);
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri);
+void _showSnack(
+  BuildContext context,
+  String message, {
+  Color background = const Color(0xFF1FAB5D),
+}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message), backgroundColor: background),
+  );
+}
+
+Future<void> _launchEmail(BuildContext context, String email) async {
+  if (!AdminValidators.isValidEmail(email)) {
+    _showSnack(
+      context,
+      AppText.of(
+        context,
+        english: 'Invalid email address',
+        romanUrdu: 'Email ghalat hai',
+      ),
+      background: Colors.redAccent,
+    );
+    return;
+  }
+
+  final uri = Uri(scheme: 'mailto', path: email.trim());
+  try {
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && context.mounted) {
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Could not open email app',
+          romanUrdu: 'Email app nahi khuli',
+        ),
+        background: Colors.redAccent,
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Could not open email app',
+          romanUrdu: 'Email app nahi khuli',
+        ),
+        background: Colors.redAccent,
+      );
+    }
+  }
+}
+
+Future<void> _launchPhone(BuildContext context, String phone) async {
+  final normalized = AdminValidators.normalizePhone(phone);
+  if (normalized == null) {
+    _showSnack(
+      context,
+      AppText.of(
+        context,
+        english: 'Invalid phone number',
+        romanUrdu: 'Phone number ghalat hai',
+      ),
+      background: Colors.redAccent,
+    );
+    return;
+  }
+
+  final uri = Uri(scheme: 'tel', path: normalized);
+  try {
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && context.mounted) {
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Could not open phone dialer',
+          romanUrdu: 'Call app nahi khuli',
+        ),
+        background: Colors.redAccent,
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Could not open phone dialer',
+          romanUrdu: 'Call app nahi khuli',
+        ),
+        background: Colors.redAccent,
+      );
+    }
   }
 }
 
 class _StyledCard extends StatelessWidget {
-  const _StyledCard({required this.child});
+  const _StyledCard({required this.child, this.accentColor});
 
   final Widget child;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
+    final accent = accentColor ?? AdminTheme.primary;
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AdminTheme.primary.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: accent),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -210,7 +517,7 @@ class _TabLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+      child: CircularProgressIndicator(color: AdminTheme.primary),
     );
   }
 }
@@ -229,14 +536,23 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AdminTheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 34, color: AdminTheme.primary),
+            ),
+            const SizedBox(height: 14),
             Text(
               message,
-              style: TextStyle(
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+                color: AdminTheme.muted,
               ),
             ),
           ],
@@ -259,102 +575,28 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Color(0xFFFF4D4F)),
-            const SizedBox(height: 12),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AdminTheme.danger.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                size: 34,
+                color: AdminTheme.danger,
+              ),
+            ),
+            const SizedBox(height: 14),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700),
+              style: const TextStyle(color: AdminTheme.muted),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _DetailSheet extends StatelessWidget {
-  const _DetailSheet({required this.title, required this.rows});
-
-  final String title;
-  final List<({IconData icon, String label, String value})> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.45,
-      minChildSize: 0.3,
-      maxChildSize: 0.85,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF212936),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ...rows.map(
-                (row) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(row.icon, size: 20, color: const Color(0xFF64748B)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              row.label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              row.value,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -371,9 +613,9 @@ class _StarRatingRow extends StatelessWidget {
       children: List.generate(5, (index) {
         final filled = index < rating.round().clamp(0, 5);
         return Icon(
-          filled ? Icons.star : Icons.star_border,
+          filled ? Icons.star_rounded : Icons.star_border_rounded,
           size: 16,
-          color: filled ? Colors.amber : Colors.grey.shade300,
+          color: filled ? const Color(0xFFFDB022) : const Color(0xFFD0D5DD),
         );
       }),
     );
@@ -387,6 +629,7 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.isLoading = false,
+    this.outlined = false,
   });
 
   final String label;
@@ -394,40 +637,366 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: isLoading ? null : onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    if (outlined) {
+      return SizedBox(
+        height: 34,
+        child: OutlinedButton.icon(
+          onPressed: isLoading ? null : onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color.withValues(alpha: 0.45)),
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+            minimumSize: const Size(0, 34),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          icon: isLoading
+              ? SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              : Icon(icon, size: 15),
+          label: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 34,
+      child: ElevatedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: color.withValues(alpha: 0.35),
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          minimumSize: const Size(0, 34),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        icon: isLoading
+            ? SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              )
+            : Icon(icon, size: 15),
+        label: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+        ),
       ),
-      icon: isLoading
-          ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
-            )
-          : Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+void _showMechanicDetails(BuildContext context, MechanicRecord mechanic) {
+  final coords = mechanic.hasCoordinates
+      ? '${mechanic.latitude!.toStringAsFixed(5)}, '
+          '${mechanic.longitude!.toStringAsFixed(5)}'
+      : '—';
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => AdminDetailSheet(
+      title: mechanic.displayName.isNotEmpty
+          ? mechanic.displayName
+          : 'Mechanic Details',
+      rows: [
+        AdminDetailRow(
+          icon: Icons.person_outline,
+          label: AppText.of(context, english: 'Full name', romanUrdu: 'Poora naam'),
+          value: _displayOrDash(mechanic.fullName),
+        ),
+        AdminDetailRow(
+          icon: Icons.email_outlined,
+          label: 'Email',
+          value: _displayOrDash(mechanic.email),
+        ),
+        AdminDetailRow(
+          icon: Icons.storefront_outlined,
+          label: AppText.of(context, english: 'Shop', romanUrdu: 'Shop'),
+          value: _displayOrDash(mechanic.shopName),
+        ),
+        AdminDetailRow(
+          icon: Icons.phone_outlined,
+          label: AppText.of(context, english: 'Phone', romanUrdu: 'Phone'),
+          value: _displayOrDash(mechanic.phone),
+        ),
+        AdminDetailRow(
+          icon: Icons.location_on_outlined,
+          label: AppText.of(context, english: 'Address', romanUrdu: 'Address'),
+          value: _displayOrDash(mechanic.address),
+        ),
+        AdminDetailRow(
+          icon: Icons.build_outlined,
+          label: AppText.of(
+            context,
+            english: 'Specialties',
+            romanUrdu: 'Specialties',
+          ),
+          value: _mechanicSpecialization(mechanic),
+        ),
+        AdminDetailRow(
+          icon: Icons.handyman_outlined,
+          label: AppText.of(context, english: 'Skills', romanUrdu: 'Skills'),
+          value: mechanic.selectedSkills.isEmpty
+              ? '—'
+              : mechanic.selectedSkills.join(', '),
+        ),
+        AdminDetailRow(
+          icon: Icons.my_location_outlined,
+          label: AppText.of(
+            context,
+            english: 'Coordinates',
+            romanUrdu: 'Coordinates',
+          ),
+          value: coords,
+        ),
+        AdminDetailRow(
+          icon: Icons.info_outline,
+          label: 'Status',
+          value: mechanic.status,
+        ),
+        if (mechanic.adminNote.isNotEmpty)
+          AdminDetailRow(
+            icon: Icons.notes_outlined,
+            label: AppText.of(
+              context,
+              english: 'Admin note',
+              romanUrdu: 'Admin note',
+            ),
+            value: mechanic.adminNote,
+          ),
+      ],
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Firestore body (one listener per collection)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdminPortalBody extends StatelessWidget {
+  const _AdminPortalBody({
+    required this.tabController,
+    required this.searchQuery,
+  });
+
+  final TabController tabController;
+  final String searchQuery;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('mechanics').snapshots(),
+      builder: (context, mechSnap) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('users').snapshots(),
+          builder: (context, userSnap) {
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('complaints')
+                  .snapshots(),
+              builder: (context, complaintSnap) {
+                final waiting = mechSnap.connectionState ==
+                        ConnectionState.waiting ||
+                    userSnap.connectionState == ConnectionState.waiting ||
+                    complaintSnap.connectionState == ConnectionState.waiting;
+
+                if (waiting &&
+                    mechSnap.data == null &&
+                    userSnap.data == null &&
+                    complaintSnap.data == null) {
+                  return const _TabLoader();
+                }
+
+                if (mechSnap.hasError ||
+                    userSnap.hasError ||
+                    complaintSnap.hasError) {
+                  return _ErrorState(
+                    message: AppText.of(
+                      context,
+                      english:
+                          'Failed to load admin data.\n${mechSnap.error ?? userSnap.error ?? complaintSnap.error}',
+                      romanUrdu:
+                          'Admin data load nahi hua.\n${mechSnap.error ?? userSnap.error ?? complaintSnap.error}',
+                    ),
+                  );
+                }
+
+                final mechanics = FirestoreParsers.parseDocs(
+                  mechSnap.data?.docs ?? const [],
+                  MechanicRecord.fromFirestore,
+                  logLabel: 'AdminMechanics',
+                );
+                final users = FirestoreParsers.parseDocs(
+                  userSnap.data?.docs ?? const [],
+                  UserRecord.fromFirestore,
+                  logLabel: 'AdminUsers',
+                );
+                final complaints = FirestoreParsers.parseDocs(
+                  complaintSnap.data?.docs ?? const [],
+                  ComplaintRecord.fromFirestore,
+                  logLabel: 'AdminComplaints',
+                );
+
+                return Column(
+                  children: [
+                    _AdminStatsHeader(
+                      pendingCount:
+                          mechanics.where((m) => m.isPendingApproval).length,
+                      verifiedCount:
+                          mechanics.where((m) => m.isApproved).length,
+                      userCount: users.length,
+                      openComplaintCount:
+                          complaints.where((c) => c.isOpen).length,
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: tabController,
+                        children: [
+                          _PendingTab(
+                            mechanics: mechanics,
+                            searchQuery: searchQuery,
+                          ),
+                          _MechanicsTab(
+                            mechanics: mechanics,
+                            searchQuery: searchQuery,
+                          ),
+                          _UsersTab(
+                            users: users,
+                            searchQuery: searchQuery,
+                          ),
+                          _ComplaintsTab(
+                            complaints: complaints,
+                            searchQuery: searchQuery,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab 1 — Pending Requests
+// Stats header
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdminStatsHeader extends StatelessWidget {
+  const _AdminStatsHeader({
+    required this.pendingCount,
+    required this.verifiedCount,
+    required this.userCount,
+    required this.openComplaintCount,
+  });
+
+  final int pendingCount;
+  final int verifiedCount;
+  final int userCount;
+  final int openComplaintCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 2),
+      child: SizedBox(
+        height: 60,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            AdminStatsCard(
+              label: AppText.of(
+                context,
+                english: 'Pending',
+                romanUrdu: 'Baaki',
+              ),
+              value: '$pendingCount',
+              icon: Icons.hourglass_top_rounded,
+              color: AdminTheme.warning,
+            ),
+            const SizedBox(width: 8),
+            AdminStatsCard(
+              label: AppText.of(
+                context,
+                english: 'Verified',
+                romanUrdu: 'Verified',
+              ),
+              value: '$verifiedCount',
+              icon: Icons.verified_rounded,
+              color: AdminTheme.success,
+            ),
+            const SizedBox(width: 8),
+            AdminStatsCard(
+              label: AppText.of(
+                context,
+                english: 'Users',
+                romanUrdu: 'Users',
+              ),
+              value: '$userCount',
+              icon: Icons.people_alt_rounded,
+              color: AdminTheme.primary,
+            ),
+            const SizedBox(width: 8),
+            AdminStatsCard(
+              label: AppText.of(
+                context,
+                english: 'Open complaints',
+                romanUrdu: 'Open shikayaat',
+              ),
+              value: '$openComplaintCount',
+              icon: Icons.report_rounded,
+              color: AdminTheme.danger,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab 1 — Pending
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PendingTab extends StatefulWidget {
-  const _PendingTab({required this.searchQuery});
+  const _PendingTab({
+    required this.mechanics,
+    required this.searchQuery,
+  });
 
+  final List<MechanicRecord> mechanics;
   final String searchQuery;
 
   @override
@@ -437,496 +1006,741 @@ class _PendingTab extends StatefulWidget {
 class _PendingTabState extends State<_PendingTab> {
   final Set<String> _processingIds = {};
 
-  Future<void> _approve(BuildContext context, String mechanicId) async {
-    if (_processingIds.contains(mechanicId)) return;
+  Future<void> _approve(BuildContext context, MechanicRecord mechanic) async {
+    if (_processingIds.contains(mechanic.uid)) return;
 
-    setState(() => _processingIds.add(mechanicId));
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(context, english: 'Approve mechanic?', romanUrdu: 'Approve karein?'),
+      message: AppText.of(
+        context,
+        english:
+            'Approve ${mechanic.displayName}? They will appear as verified.',
+        romanUrdu:
+            '${mechanic.displayName} ko approve karein? Woh verified dikhengay.',
+      ),
+      confirmLabel: AppText.of(context, english: 'Approve', romanUrdu: 'Approve'),
+      confirmColor: const Color(0xFF1FAB5D),
+      icon: Icons.check_circle_outline,
+    );
+    if (!confirmed || !mounted) return;
 
+    setState(() => _processingIds.add(mechanic.uid));
     try {
       await FirebaseFirestore.instance
           .collection('mechanics')
-          .doc(mechanicId)
+          .doc(mechanic.uid)
           .update({
         'status': 'approved',
         'isVerified': true,
+        'adminNote': '',
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mechanic Approved Successfully'),
-          backgroundColor: Color(0xFF1FAB5D),
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Mechanic approved',
+          romanUrdu: 'Mechanic approve ho gaya',
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      _showSnack(context, e.toString(), background: Colors.redAccent);
     } finally {
-      if (mounted) {
-        setState(() => _processingIds.remove(mechanicId));
-      }
+      if (mounted) setState(() => _processingIds.remove(mechanic.uid));
     }
   }
 
-  Future<void> _reject(BuildContext context, String mechanicId) async {
-    if (_processingIds.contains(mechanicId)) return;
+  Future<void> _reject(BuildContext context, MechanicRecord mechanic) async {
+    if (_processingIds.contains(mechanic.uid)) return;
 
-    setState(() => _processingIds.add(mechanicId));
+    final reason = await showAdminReasonDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Reject mechanic',
+        romanUrdu: 'Mechanic reject karein',
+      ),
+      hint: AppText.of(
+        context,
+        english: 'Reason for rejection…',
+        romanUrdu: 'Reject ki wajah…',
+      ),
+      confirmLabel: AppText.of(context, english: 'Reject', romanUrdu: 'Reject'),
+    );
+    if (reason == null || !mounted) return;
 
+    setState(() => _processingIds.add(mechanic.uid));
     try {
       await FirebaseFirestore.instance
           .collection('mechanics')
-          .doc(mechanicId)
+          .doc(mechanic.uid)
           .update({
         'status': 'rejected',
         'isVerified': false,
+        'adminNote': reason,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mechanic Rejected'),
-          backgroundColor: Color(0xFFFF4D4F),
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Mechanic rejected',
+          romanUrdu: 'Mechanic reject ho gaya',
+        ),
+        background: const Color(0xFFFF4D4F),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(mechanic.uid));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mechanics = widget.mechanics
+        .where((m) => m.isPendingApproval)
+        .where((m) {
+          return _matchesQuery(widget.searchQuery, [
+            m.fullName,
+            m.shopName,
+            m.email,
+            m.phone,
+            ...m.specialties,
+          ]);
+        })
+        .toList();
+
+    if (mechanics.isEmpty) {
+      return _EmptyState(
+        icon: Icons.inbox_outlined,
+        message: AppText.of(
+          context,
+          english: widget.searchQuery.isEmpty
+              ? 'No pending mechanic requests'
+              : 'No matching pending requests',
+          romanUrdu: widget.searchQuery.isEmpty
+              ? 'Koi pending request nahi'
+              : 'Koi match nahi mila',
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      itemCount: mechanics.length,
+      itemBuilder: (context, index) {
+        final mechanic = mechanics[index];
+        final processing = _processingIds.contains(mechanic.uid);
+        final specialty = _mechanicSpecialization(mechanic);
+
+        return _StyledCard(
+          accentColor: AdminTheme.warning,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor:
+                          AdminTheme.warning.withValues(alpha: 0.15),
+                      child: Text(
+                        (mechanic.displayName.isNotEmpty
+                                ? mechanic.displayName[0]
+                                : '?')
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          color: AdminTheme.warning,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  mechanic.displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AdminTheme.ink,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const AdminStatusChip(
+                                label: 'Pending',
+                                color: AdminTheme.warning,
+                                icon: Icons.hourglass_top,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _displayOrDash(mechanic.email),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AdminTheme.muted,
+                            ),
+                          ),
+                          if (mechanic.phone.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              mechanic.phone,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AdminTheme.muted,
+                              ),
+                            ),
+                          ],
+                          if (specialty != '—') ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              specialty,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _ActionButton(
+                      label: AppText.of(
+                        context,
+                        english: 'Details',
+                        romanUrdu: 'Details',
+                      ),
+                      color: AdminTheme.primary,
+                      icon: Icons.visibility_outlined,
+                      outlined: true,
+                      onPressed: () =>
+                          _showMechanicDetails(context, mechanic),
+                    ),
+                    _ActionButton(
+                      label: AppText.of(
+                        context,
+                        english: 'Approve',
+                        romanUrdu: 'Approve',
+                      ),
+                      color: AdminTheme.success,
+                      icon: Icons.check,
+                      isLoading: processing,
+                      onPressed: () => _approve(context, mechanic),
+                    ),
+                    _ActionButton(
+                      label: AppText.of(
+                        context,
+                        english: 'Reject',
+                        romanUrdu: 'Reject',
+                      ),
+                      color: AdminTheme.danger,
+                      icon: Icons.close,
+                      isLoading: processing,
+                      onPressed: () => _reject(context, mechanic),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab 2 — Mechanics
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MechanicsTab extends StatefulWidget {
+  const _MechanicsTab({
+    required this.mechanics,
+    required this.searchQuery,
+  });
+
+  final List<MechanicRecord> mechanics;
+  final String searchQuery;
+
+  @override
+  State<_MechanicsTab> createState() => _MechanicsTabState();
+}
+
+class _MechanicsTabState extends State<_MechanicsTab> {
+  final Set<String> _processingIds = {};
+  String _filter = 'All';
+  String _sort = 'Rating';
+
+  Future<void> _unverify(BuildContext context, MechanicRecord mechanic) async {
+    if (_processingIds.contains(mechanic.uid)) return;
+
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Move to pending?',
+        romanUrdu: 'Pending par bhejein?',
+      ),
+      message: AppText.of(
+        context,
+        english:
+            'Unverify ${mechanic.displayName}? They will return to pending approval.',
+        romanUrdu:
+            '${mechanic.displayName} ko unverify karein? Woh pending mein chale jayein ge.',
+      ),
+      confirmLabel:
+          AppText.of(context, english: 'Unverify', romanUrdu: 'Unverify'),
+      confirmColor: const Color(0xFFF59E0B),
+      icon: Icons.undo,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _processingIds.add(mechanic.uid));
+    try {
+      await FirebaseFirestore.instance
+          .collection('mechanics')
+          .doc(mechanic.uid)
+          .update({
+        'status': 'pending',
+        'isVerified': false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Mechanic moved to pending',
+          romanUrdu: 'Mechanic pending mein chala gaya',
+        ),
+        background: const Color(0xFFF59E0B),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(mechanic.uid));
+    }
+  }
+
+  Future<void> _reject(BuildContext context, MechanicRecord mechanic) async {
+    if (_processingIds.contains(mechanic.uid)) return;
+
+    final reason = await showAdminReasonDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Reject mechanic',
+        romanUrdu: 'Mechanic reject karein',
+      ),
+      hint: AppText.of(
+        context,
+        english: 'Reason for rejection…',
+        romanUrdu: 'Reject ki wajah…',
+      ),
+      confirmLabel: AppText.of(context, english: 'Reject', romanUrdu: 'Reject'),
+    );
+    if (reason == null || !mounted) return;
+
+    setState(() => _processingIds.add(mechanic.uid));
+    try {
+      await FirebaseFirestore.instance
+          .collection('mechanics')
+          .doc(mechanic.uid)
+          .update({
+        'status': 'rejected',
+        'isVerified': false,
+        'adminNote': reason,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Mechanic rejected',
+          romanUrdu: 'Mechanic reject ho gaya',
+        ),
+        background: const Color(0xFFFF4D4F),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(mechanic.uid));
+    }
+  }
+
+  Future<void> _reopen(BuildContext context, MechanicRecord mechanic) async {
+    if (_processingIds.contains(mechanic.uid)) return;
+
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Re-open application?',
+        romanUrdu: 'Dobara open karein?',
+      ),
+      message: AppText.of(
+        context,
+        english:
+            'Move ${mechanic.displayName} back to pending for re-review?',
+        romanUrdu:
+            '${mechanic.displayName} ko pending mein wapas bhejein?',
+      ),
+      confirmLabel: AppText.of(context, english: 'Re-open', romanUrdu: 'Re-open'),
+      confirmColor: const Color(0xFF3B82F6),
+      icon: Icons.refresh,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _processingIds.add(mechanic.uid));
+    try {
+      await FirebaseFirestore.instance
+          .collection('mechanics')
+          .doc(mechanic.uid)
+          .update({
+        'status': 'pending',
+        'isVerified': false,
+        'adminNote': '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Application re-opened',
+          romanUrdu: 'Application dobara open ho gai',
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      _showSnack(context, e.toString(), background: Colors.redAccent);
     } finally {
-      if (mounted) {
-        setState(() => _processingIds.remove(mechanicId));
-      }
+      if (mounted) setState(() => _processingIds.remove(mechanic.uid));
     }
   }
 
-  bool _isPending(MechanicRecord mechanic) =>
-      !mechanic.isVerified && !mechanic.isRejected;
-
-  void _showDetails(BuildContext context, MechanicRecord mechanic) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _DetailSheet(
-        title: mechanic.displayName.isNotEmpty
-            ? mechanic.displayName
-            : 'Mechanic Details',
-        rows: [
-          (
-            icon: Icons.phone_outlined,
-            label: 'Phone',
-            value: mechanic.phone.isNotEmpty ? mechanic.phone : '—',
-          ),
-          (
-            icon: Icons.location_on_outlined,
-            label: 'Location',
-            value: mechanic.address.isNotEmpty ? mechanic.address : '—',
-          ),
-          (
-            icon: Icons.build_outlined,
-            label: 'Specialization',
-            value: _mechanicSpecialization(mechanic),
-          ),
-        ],
-      ),
-    );
+  List<MechanicRecord> _applyFilter(List<MechanicRecord> all) {
+    switch (_filter) {
+      case 'Verified':
+        return all.where((m) => m.isApproved).toList();
+      case 'Rejected':
+        return all.where((m) => m.isRejected).toList();
+      default:
+        return all.where((m) => m.isApproved || m.isRejected).toList();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('mechanics').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _TabLoader();
-        }
-        if (snapshot.hasError) {
-          return _ErrorState(
-            message: 'Failed to load pending requests.\n${snapshot.error}',
-          );
-        }
-
-        final mechanics = FirestoreParsers.parseDocs(
-          snapshot.data?.docs ?? [],
-          MechanicRecord.fromFirestore,
-          logLabel: 'AdminPending',
-        ).where((mechanic) {
-          if (!_isPending(mechanic)) return false;
-          return _matchesQuery(
-            widget.searchQuery,
-            [mechanic.fullName, mechanic.email, mechanic.shopName],
-          );
-        }).toList();
-
-        if (mechanics.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.pending_actions_outlined,
-            message: 'No records found',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: mechanics.length,
-          itemBuilder: (context, index) {
-            final mechanic = mechanics[index];
-            final displayName = mechanic.displayName.isNotEmpty
-                ? mechanic.displayName
-                : 'Unknown';
-            final email = mechanic.email.isNotEmpty ? mechanic.email : '—';
-            final initial =
-                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
-
-            final isProcessing = _processingIds.contains(mechanic.uid);
-
-            return _StyledCard(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => _showDetails(context, mechanic),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: const Color(0xFFE2E8F0),
-                            child: Text(
-                              initial,
-                              style: const TextStyle(
-                                color: Color(0xFF3B82F6),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  displayName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Text(
-                                  email,
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: Colors.grey.shade400,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _ActionButton(
-                              label: 'Approve',
-                              color: const Color(0xFF1FAB5D),
-                              icon: Icons.check,
-                              isLoading: isProcessing,
-                              onPressed: () => _approve(context, mechanic.uid),
-                            ),
-                            const SizedBox(width: 8),
-                            _ActionButton(
-                              label: 'Reject',
-                              color: const Color(0xFFFF4D4F),
-                              icon: Icons.close,
-                              isLoading: isProcessing,
-                              onPressed: () => _reject(context, mechanic.uid),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tab 2 — Approved Mechanics
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum _MechanicSort { highestRated, recent }
-
-class _ApprovedMechanicsTab extends StatefulWidget {
-  const _ApprovedMechanicsTab();
-
-  @override
-  State<_ApprovedMechanicsTab> createState() => _ApprovedMechanicsTabState();
-}
-
-class _ApprovedMechanicsTabState extends State<_ApprovedMechanicsTab> {
-  _MechanicSort _sort = _MechanicSort.highestRated;
-
-  void _showFilterMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return Column(
+      children: [
+        AdminFilterChipBar(
+          options: const ['All', 'Verified', 'Rejected'],
+          selected: _filter,
+          onSelected: (value) => setState(() => _filter = value),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+          child: Row(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Sort Mechanics',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const Text(
+                'Sort:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AdminTheme.muted,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('Highest Rated'),
-                trailing: _sort == _MechanicSort.highestRated
-                    ? const Icon(Icons.check, color: Color(0xFF3B82F6))
-                    : null,
-                onTap: () {
-                  setState(() => _sort = _MechanicSort.highestRated);
-                  Navigator.pop(context);
-                },
+              const SizedBox(width: 8),
+              _SortChip(
+                label: AppText.of(context, english: 'Rating', romanUrdu: 'Rating'),
+                selected: _sort == 'Rating',
+                onTap: () => setState(() => _sort = 'Rating'),
               ),
-              ListTile(
-                leading: const Icon(Icons.access_time),
-                title: const Text('Recent'),
-                trailing: _sort == _MechanicSort.recent
-                    ? const Icon(Icons.check, color: Color(0xFF3B82F6))
-                    : null,
-                onTap: () {
-                  setState(() => _sort = _MechanicSort.recent);
-                  Navigator.pop(context);
-                },
+              const SizedBox(width: 6),
+              _SortChip(
+                label: AppText.of(context, english: 'Recent', romanUrdu: 'Recent'),
+                selected: _sort == 'Recent',
+                onTap: () => setState(() => _sort = 'Recent'),
               ),
-              const SizedBox(height: 8),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              var mechanics = _applyFilter(widget.mechanics).where((m) {
+                return _matchesQuery(widget.searchQuery, [
+                  m.fullName,
+                  m.shopName,
+                  m.email,
+                  m.phone,
+                  m.address,
+                  ...m.specialties,
+                ]);
+              }).toList();
 
-  void _showDetails(BuildContext context, MechanicRecord mechanic) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _DetailSheet(
-        title: mechanic.fullName.isNotEmpty ? mechanic.fullName : 'Mechanic Profile',
-        rows: [
-          (
-            icon: Icons.store_outlined,
-            label: 'Shop Name',
-            value: mechanic.shopName.isNotEmpty ? mechanic.shopName : '—',
-          ),
-          (
-            icon: Icons.location_on_outlined,
-            label: 'Exact Location',
-            value: mechanic.address.isNotEmpty ? mechanic.address : '—',
-          ),
-          (
-            icon: Icons.phone_outlined,
-            label: 'Contact Number',
-            value: mechanic.phone.isNotEmpty ? mechanic.phone : '—',
-          ),
-          (
-            icon: Icons.email_outlined,
-            label: 'Gmail',
-            value: mechanic.email.isNotEmpty ? mechanic.email : '—',
-          ),
-          (
-            icon: Icons.star_outline,
-            label: 'Rating',
-            value: '${mechanic.rating.toStringAsFixed(1)} (${mechanic.reviewCount} reviews)',
-          ),
-        ],
-      ),
-    );
-  }
+              if (_sort == 'Rating') {
+                mechanics.sort((a, b) => b.rating.compareTo(a.rating));
+              } else {
+                mechanics.sort((a, b) {
+                  final aDate =
+                      a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                  final bDate =
+                      b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                  return bDate.compareTo(aDate);
+                });
+              }
 
-  List<MechanicRecord> _sortedMechanics(List<MechanicRecord> mechanics) {
-    final sorted = List<MechanicRecord>.from(mechanics);
-    if (_sort == _MechanicSort.highestRated) {
-      sorted.sort((a, b) => b.rating.compareTo(a.rating));
-    } else {
-      sorted.sort((a, b) {
-        final aTime = a.createdAt;
-        final bTime = b.createdAt;
-        if (aTime != null && bTime != null) {
-          return bTime.compareTo(aTime);
-        }
-        return 0;
-      });
-    }
-    return sorted;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('mechanics').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _TabLoader();
-        }
-        if (snapshot.hasError) {
-          return _ErrorState(
-            message: 'Failed to load mechanics.\n${snapshot.error}',
-          );
-        }
-
-        final mechanics = _sortedMechanics(
-          FirestoreParsers.parseDocs(
-            snapshot.data?.docs ?? [],
-            MechanicRecord.fromFirestore,
-            logLabel: 'AdminMechanics',
-          ).where((mechanic) => mechanic.isVerified).toList(),
-        );
-
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-              child: Row(
-                children: [
-                  Text(
-                    '${mechanics.length} mechanic${mechanics.length == 1 ? '' : 's'}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
+              if (mechanics.isEmpty) {
+                return _EmptyState(
+                  icon: Icons.build_outlined,
+                  message: AppText.of(
+                    context,
+                    english: 'No mechanics found',
+                    romanUrdu: 'Koi mechanic nahi mila',
                   ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Filter & Sort',
-                    icon: const Icon(Icons.filter_list),
-                    onPressed: _showFilterMenu,
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: mechanics.isEmpty
-                  ? const _EmptyState(
-                      icon: Icons.engineering_outlined,
-                      message: 'No records found',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                      itemCount: mechanics.length,
-                      itemBuilder: (context, index) {
-                        final mechanic = mechanics[index];
-                        final displayName = mechanic.displayName.isNotEmpty
-                            ? mechanic.displayName
-                            : 'Unknown';
-                        final email =
-                            mechanic.email.isNotEmpty ? mechanic.email : '—';
-                        final initial = displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : '?';
+                );
+              }
 
-                        return _StyledCard(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => _showDetails(context, mechanic),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: const Color(0xFFDCFCE7),
-                                    child: Text(
-                                      initial,
-                                      style: const TextStyle(
-                                        color: Color(0xFF16A34A),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                itemCount: mechanics.length,
+                itemBuilder: (context, index) {
+                  final mechanic = mechanics[index];
+                  final processing = _processingIds.contains(mechanic.uid);
+                  final rejected = mechanic.isRejected;
+
+                  return _StyledCard(
+                    accentColor:
+                        rejected ? AdminTheme.danger : AdminTheme.success,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: (rejected
+                                        ? AdminTheme.danger
+                                        : AdminTheme.success)
+                                    .withValues(alpha: 0.15),
+                                child: Icon(
+                                  rejected ? Icons.block : Icons.verified,
+                                  color: rejected
+                                      ? AdminTheme.danger
+                                      : AdminTheme.success,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Text(
-                                          displayName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        Text(
-                                          email,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            _StarRatingRow(rating: mechanic.rating),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              mechanic.rating.toStringAsFixed(1),
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey.shade600,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                        Expanded(
+                                          child: Text(
+                                            mechanic.displayName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AdminTheme.ink,
                                             ),
-                                          ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        AdminStatusChip(
+                                          label: rejected
+                                              ? 'Rejected'
+                                              : 'Verified',
+                                          color: rejected
+                                              ? AdminTheme.danger
+                                              : AdminTheme.success,
+                                          icon: rejected
+                                              ? Icons.cancel_outlined
+                                              : Icons.verified_outlined,
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  const Icon(
-                                    Icons.verified,
-                                    color: Color(0xFF16A34A),
-                                  ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _displayOrDash(mechanic.email),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.muted,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _mechanicSpecialization(mechanic),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                    if (mechanic.address.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        mechanic.address,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AdminTheme.muted,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        _StarRatingRow(rating: mechanic.rating),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          mechanic.rating.toStringAsFixed(1),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AdminTheme.muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        );
-                      },
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _ActionButton(
+                                label: AppText.of(
+                                  context,
+                                  english: 'Details',
+                                  romanUrdu: 'Details',
+                                ),
+                                color: AdminTheme.primary,
+                                icon: Icons.visibility_outlined,
+                                outlined: true,
+                                onPressed: () =>
+                                    _showMechanicDetails(context, mechanic),
+                              ),
+                              if (AdminValidators.isValidEmail(mechanic.email))
+                                _ActionButton(
+                                  label: 'Email',
+                                  color: AdminTheme.info,
+                                  icon: Icons.email_outlined,
+                                  onPressed: () =>
+                                      _launchEmail(context, mechanic.email),
+                                ),
+                              if (AdminValidators.isValidPhone(mechanic.phone))
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Call',
+                                    romanUrdu: 'Call',
+                                  ),
+                                  color: const Color(0xFF0EA5E9),
+                                  icon: Icons.phone_outlined,
+                                  onPressed: () =>
+                                      _launchPhone(context, mechanic.phone),
+                                ),
+                              if (!rejected)
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Unverify',
+                                    romanUrdu: 'Unverify',
+                                  ),
+                                  color: AdminTheme.warning,
+                                  icon: Icons.undo,
+                                  isLoading: processing,
+                                  onPressed: () =>
+                                      _unverify(context, mechanic),
+                                ),
+                              if (!rejected)
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Reject',
+                                    romanUrdu: 'Reject',
+                                  ),
+                                  color: AdminTheme.danger,
+                                  icon: Icons.close,
+                                  isLoading: processing,
+                                  onPressed: () => _reject(context, mechanic),
+                                ),
+                              if (rejected)
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Re-open',
+                                    romanUrdu: 'Re-open',
+                                  ),
+                                  color: AdminTheme.primary,
+                                  icon: Icons.refresh,
+                                  isLoading: processing,
+                                  onPressed: () => _reopen(context, mechanic),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-            ),
-          ],
-        );
-      },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -935,96 +1749,356 @@ class _ApprovedMechanicsTabState extends State<_ApprovedMechanicsTab> {
 // Tab 3 — Users
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _UsersTab extends StatelessWidget {
-  const _UsersTab({required this.searchQuery});
+class _UsersTab extends StatefulWidget {
+  const _UsersTab({
+    required this.users,
+    required this.searchQuery,
+  });
 
+  final List<UserRecord> users;
   final String searchQuery;
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _TabLoader();
-        }
-        if (snapshot.hasError) {
-          return _ErrorState(
-            message: 'Failed to load users.\n${snapshot.error}',
-          );
-        }
+  State<_UsersTab> createState() => _UsersTabState();
+}
 
-        final users = FirestoreParsers.parseDocs(
-          snapshot.data?.docs ?? [],
-          UserRecord.fromFirestore,
-          logLabel: 'AdminUsers',
-        ).where((user) {
-          return _matchesQuery(
-            searchQuery,
-            [user.fullName, user.email],
-          );
-        }).toList();
+class _UsersTabState extends State<_UsersTab> {
+  final Set<String> _processingIds = {};
+  String _filter = 'All';
 
-        if (users.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.people_outline,
-            message: 'No records found',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: users.length,
-          itemBuilder: (context, index) {
-            final user = users[index];
-            final fullName = user.displayName;
-            final email = user.email.isNotEmpty ? user.email : '—';
-            final joined = _formatDate(user.createdAt);
-
-            return _StyledCard(
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF1F5F9),
-                  child: Icon(Icons.person_outline, color: Color(0xFF64748B)),
-                ),
-                title: Text(
-                  fullName,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 2),
-                    Text(email, style: TextStyle(color: Colors.grey.shade600)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 12, color: Colors.grey.shade500),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Joined $joined',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  tooltip: 'Send email',
-                  icon: const Icon(Icons.email_outlined, color: Color(0xFF3B82F6)),
-                  onPressed: email != '—' ? () => _launchEmail(email) : null,
-                ),
+  void _showUserDetails(BuildContext context, UserRecord user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AdminDetailSheet(
+        title: user.displayName,
+        rows: [
+          AdminDetailRow(
+            icon: Icons.email_outlined,
+            label: 'Email',
+            value: _displayOrDash(user.email),
+          ),
+          AdminDetailRow(
+            icon: Icons.phone_outlined,
+            label: AppText.of(context, english: 'Phone', romanUrdu: 'Phone'),
+            value: _displayOrDash(user.phone),
+          ),
+          AdminDetailRow(
+            icon: Icons.badge_outlined,
+            label: AppText.of(context, english: 'Role', romanUrdu: 'Role'),
+            value: _displayOrDash(user.role),
+          ),
+          AdminDetailRow(
+            icon: Icons.calendar_today_outlined,
+            label: AppText.of(context, english: 'Joined', romanUrdu: 'Joined'),
+            value: _formatDate(user.createdAt),
+          ),
+          AdminDetailRow(
+            icon: Icons.info_outline,
+            label: 'Status',
+            value: user.isBlocked ? 'Blocked' : 'Active',
+          ),
+          if (user.adminNote.isNotEmpty)
+            AdminDetailRow(
+              icon: Icons.notes_outlined,
+              label: AppText.of(
+                context,
+                english: 'Admin note',
+                romanUrdu: 'Admin note',
               ),
-            );
-          },
-        );
-      },
+              value: user.adminNote,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _block(BuildContext context, UserRecord user) async {
+    if (_processingIds.contains(user.uid)) return;
+
+    final reason = await showAdminReasonDialog(
+      context: context,
+      title: AppText.of(context, english: 'Block user', romanUrdu: 'User block karein'),
+      hint: AppText.of(
+        context,
+        english: 'Reason for blocking…',
+        romanUrdu: 'Block ki wajah…',
+      ),
+      confirmLabel: AppText.of(context, english: 'Block', romanUrdu: 'Block'),
+    );
+    if (reason == null || !mounted) return;
+
+    setState(() => _processingIds.add(user.uid));
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'status': 'blocked',
+        'isBlocked': true,
+        'adminNote': reason,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'User blocked',
+          romanUrdu: 'User block ho gaya',
+        ),
+        background: const Color(0xFFFF4D4F),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(user.uid));
+    }
+  }
+
+  Future<void> _unblock(BuildContext context, UserRecord user) async {
+    if (_processingIds.contains(user.uid)) return;
+
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Unblock user?',
+        romanUrdu: 'Unblock karein?',
+      ),
+      message: AppText.of(
+        context,
+        english: 'Restore access for ${user.displayName}?',
+        romanUrdu: '${user.displayName} ka access wapas dein?',
+      ),
+      confirmLabel:
+          AppText.of(context, english: 'Unblock', romanUrdu: 'Unblock'),
+      confirmColor: const Color(0xFF1FAB5D),
+      icon: Icons.lock_open,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _processingIds.add(user.uid));
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'status': 'active',
+        'isBlocked': false,
+        'adminNote': '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'User unblocked',
+          romanUrdu: 'User unblock ho gaya',
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(user.uid));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AdminFilterChipBar(
+          options: const ['All', 'Active', 'Blocked'],
+          selected: _filter,
+          onSelected: (value) => setState(() => _filter = value),
+        ),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              var users = List<UserRecord>.from(widget.users);
+
+              if (_filter == 'Active') {
+                users = users.where((u) => u.isActive).toList();
+              } else if (_filter == 'Blocked') {
+                users = users.where((u) => u.isBlocked).toList();
+              }
+
+              users = users.where((u) {
+                return _matchesQuery(widget.searchQuery, [
+                  u.fullName,
+                  u.email,
+                  u.phone,
+                  u.role,
+                ]);
+              }).toList();
+
+              if (users.isEmpty) {
+                return _EmptyState(
+                  icon: Icons.people_outline,
+                  message: AppText.of(
+                    context,
+                    english: 'No users found',
+                    romanUrdu: 'Koi user nahi mila',
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  final processing = _processingIds.contains(user.uid);
+
+                  return _StyledCard(
+                    accentColor:
+                        user.isBlocked ? AdminTheme.danger : AdminTheme.primary,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: (user.isBlocked
+                                        ? AdminTheme.danger
+                                        : AdminTheme.primary)
+                                    .withValues(alpha: 0.15),
+                                child: Text(
+                                  (user.displayName.isNotEmpty
+                                          ? user.displayName[0]
+                                          : '?')
+                                      .toUpperCase(),
+                                  style: TextStyle(
+                                    color: user.isBlocked
+                                        ? AdminTheme.danger
+                                        : AdminTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            user.displayName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AdminTheme.ink,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        AdminStatusChip(
+                                          label: user.isBlocked
+                                              ? 'Blocked'
+                                              : 'Active',
+                                          color: user.isBlocked
+                                              ? AdminTheme.danger
+                                              : AdminTheme.success,
+                                          icon: user.isBlocked
+                                              ? Icons.block
+                                              : Icons.check_circle_outline,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _displayOrDash(user.email),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.muted,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${user.role} · ${_formatDate(user.createdAt)}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AdminTheme.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _ActionButton(
+                                label: AppText.of(
+                                  context,
+                                  english: 'Details',
+                                  romanUrdu: 'Details',
+                                ),
+                                color: AdminTheme.primary,
+                                icon: Icons.visibility_outlined,
+                                outlined: true,
+                                onPressed: () =>
+                                    _showUserDetails(context, user),
+                              ),
+                              if (AdminValidators.isValidEmail(user.email))
+                                _ActionButton(
+                                  label: 'Email',
+                                  color: AdminTheme.info,
+                                  icon: Icons.email_outlined,
+                                  onPressed: () =>
+                                      _launchEmail(context, user.email),
+                                ),
+                              if (!user.isBlocked)
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Block',
+                                    romanUrdu: 'Block',
+                                  ),
+                                  color: AdminTheme.danger,
+                                  icon: Icons.block,
+                                  isLoading: processing,
+                                  onPressed: () => _block(context, user),
+                                )
+                              else
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Unblock',
+                                    romanUrdu: 'Unblock',
+                                  ),
+                                  color: AdminTheme.success,
+                                  icon: Icons.lock_open,
+                                  isLoading: processing,
+                                  onPressed: () => _unblock(context, user),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1033,163 +2107,335 @@ class _UsersTab extends StatelessWidget {
 // Tab 4 — Complaints
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ComplaintsTab extends StatelessWidget {
-  const _ComplaintsTab();
+class _ComplaintsTab extends StatefulWidget {
+  const _ComplaintsTab({
+    required this.complaints,
+    required this.searchQuery,
+  });
 
-  Future<void> _resolve(String docId) async {
-    await FirebaseFirestore.instance
-        .collection('complaints')
-        .doc(docId)
-        .update({'status': true});
-  }
+  final List<ComplaintRecord> complaints;
+  final String searchQuery;
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _TabLoader();
-        }
-        if (snapshot.hasError) {
-          return _ErrorState(
-            message: 'Failed to load complaints.\n${snapshot.error}',
-          );
-        }
-
-        final docs = (snapshot.data?.docs ?? []).where((doc) {
-          final status = doc.data()['status'];
-          return status != true;
-        }).toList();
-
-        if (docs.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.report_gmailerrorred_outlined,
-            message: 'No records found',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final data = doc.data();
-            final reportedBy = _str(
-              data['userEmail'] ?? data['reportedBy'],
-            );
-            final against = _str(
-              data['mechanicName'] ?? data['against'],
-            );
-            final issue = _str(data['issue'] ?? data['complaint'] ?? data['text']);
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(width: 5, color: const Color(0xFFFF6B35)),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: Color(0xFFFF6B35),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Complaint',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Color(0xFF212936),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              _ComplaintField(label: 'Reported By', value: reportedBy),
-                              const SizedBox(height: 8),
-                              _ComplaintField(label: 'Against', value: against),
-                              const SizedBox(height: 8),
-                              _ComplaintField(label: 'Issue', value: issue),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  OutlinedButton.icon(
-                                    onPressed: reportedBy != '—'
-                                        ? () => _launchEmail(reportedBy)
-                                        : null,
-                                    icon: const Icon(Icons.mail_outline, size: 18),
-                                    label: const Text('Contact User'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF3B82F6),
-                                      side: const BorderSide(color: Color(0xFF3B82F6)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _ActionButton(
-                                    label: 'Resolve',
-                                    color: const Color(0xFF1FAB5D),
-                                    icon: Icons.check_circle_outline,
-                                    onPressed: () => _resolve(doc.id),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  State<_ComplaintsTab> createState() => _ComplaintsTabState();
 }
 
-class _ComplaintField extends StatelessWidget {
-  const _ComplaintField({required this.label, required this.value});
+class _ComplaintsTabState extends State<_ComplaintsTab> {
+  final Set<String> _processingIds = {};
+  String _filter = 'Open';
 
-  final String label;
-  final String value;
+  Future<void> _resolve(BuildContext context, ComplaintRecord complaint) async {
+    if (_processingIds.contains(complaint.id)) return;
+
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Resolve complaint?',
+        romanUrdu: 'Resolve karein?',
+      ),
+      message: AppText.of(
+        context,
+        english: 'Mark this complaint as resolved?',
+        romanUrdu: 'Is shikayat ko resolved mark karein?',
+      ),
+      confirmLabel:
+          AppText.of(context, english: 'Resolve', romanUrdu: 'Resolve'),
+      confirmColor: const Color(0xFF1FAB5D),
+      icon: Icons.check_circle_outline,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _processingIds.add(complaint.id));
+    try {
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaint.id)
+          .update({
+        'status': 'resolved',
+        'resolvedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Complaint resolved',
+          romanUrdu: 'Shikayat resolve ho gai',
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(complaint.id));
+    }
+  }
+
+  Future<void> _reopen(BuildContext context, ComplaintRecord complaint) async {
+    if (_processingIds.contains(complaint.id)) return;
+
+    final confirmed = await showAdminConfirmDialog(
+      context: context,
+      title: AppText.of(
+        context,
+        english: 'Reopen complaint?',
+        romanUrdu: 'Dobara open karein?',
+      ),
+      message: AppText.of(
+        context,
+        english: 'Move this complaint back to open?',
+        romanUrdu: 'Is shikayat ko open par wapas karein?',
+      ),
+      confirmLabel:
+          AppText.of(context, english: 'Reopen', romanUrdu: 'Reopen'),
+      confirmColor: const Color(0xFFF59E0B),
+      icon: Icons.refresh,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _processingIds.add(complaint.id));
+    try {
+      await FirebaseFirestore.instance
+          .collection('complaints')
+          .doc(complaint.id)
+          .update({
+        'status': 'open',
+        'resolvedAt': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      _showSnack(
+        context,
+        AppText.of(
+          context,
+          english: 'Complaint reopened',
+          romanUrdu: 'Shikayat dobara open ho gai',
+        ),
+        background: const Color(0xFFF59E0B),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showSnack(context, e.toString(), background: Colors.redAccent);
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(complaint.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
-          ),
+        AdminFilterChipBar(
+          options: const ['Open', 'Resolved'],
+          selected: _filter,
+          onSelected: (value) => setState(() => _filter = value),
         ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              var complaints = List<ComplaintRecord>.from(widget.complaints);
+
+              if (_filter == 'Open') {
+                complaints = complaints.where((c) => c.isOpen).toList();
+              } else {
+                complaints = complaints.where((c) => c.isResolved).toList();
+              }
+
+              complaints = complaints.where((c) {
+                return _matchesQuery(widget.searchQuery, [
+                  c.userName,
+                  c.userEmail,
+                  c.mechanicName,
+                  c.issue,
+                  c.status,
+                ]);
+              }).toList();
+
+              complaints.sort((a, b) {
+                final aDate =
+                    a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bDate =
+                    b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return bDate.compareTo(aDate);
+              });
+
+              if (complaints.isEmpty) {
+                return _EmptyState(
+                  icon: Icons.report_outlined,
+                  message: AppText.of(
+                    context,
+                    english: _filter == 'Open'
+                        ? 'No open complaints'
+                        : 'No resolved complaints',
+                    romanUrdu: _filter == 'Open'
+                        ? 'Koi open shikayat nahi'
+                        : 'Koi resolved shikayat nahi',
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                itemCount: complaints.length,
+                itemBuilder: (context, index) {
+                  final complaint = complaints[index];
+                  final processing = _processingIds.contains(complaint.id);
+
+                  return _StyledCard(
+                    accentColor: complaint.isResolved
+                        ? AdminTheme.success
+                        : AdminTheme.warning,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            complaint.mechanicName,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AdminTheme.ink,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        AdminStatusChip(
+                                          label: complaint.isResolved
+                                              ? 'Resolved'
+                                              : 'Open',
+                                          color: complaint.isResolved
+                                              ? AdminTheme.success
+                                              : AdminTheme.warning,
+                                          icon: complaint.isResolved
+                                              ? Icons.check_circle_outline
+                                              : Icons.report_outlined,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      AppText.of(
+                                        context,
+                                        english:
+                                            'Reporter: ${complaint.userName}',
+                                        romanUrdu:
+                                            'Reporter: ${complaint.userName}',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.muted,
+                                      ),
+                                    ),
+                                    if (complaint.userEmail.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        complaint.userEmail,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AdminTheme.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            complaint.issue,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF334155),
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatDate(complaint.createdAt),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AdminTheme.muted,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              if (AdminValidators.isValidEmail(
+                                complaint.userEmail,
+                              ))
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Contact',
+                                    romanUrdu: 'Contact',
+                                  ),
+                                  color: AdminTheme.info,
+                                  icon: Icons.email_outlined,
+                                  onPressed: () => _launchEmail(
+                                    context,
+                                    complaint.userEmail,
+                                  ),
+                                ),
+                              if (complaint.isOpen)
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Resolve',
+                                    romanUrdu: 'Resolve',
+                                  ),
+                                  color: AdminTheme.success,
+                                  icon: Icons.check,
+                                  isLoading: processing,
+                                  onPressed: () =>
+                                      _resolve(context, complaint),
+                                )
+                              else
+                                _ActionButton(
+                                  label: AppText.of(
+                                    context,
+                                    english: 'Reopen',
+                                    romanUrdu: 'Reopen',
+                                  ),
+                                  color: AdminTheme.warning,
+                                  icon: Icons.refresh,
+                                  isLoading: processing,
+                                  onPressed: () =>
+                                      _reopen(context, complaint),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );

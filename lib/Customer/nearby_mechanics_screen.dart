@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:mechfixes/Customer/issue_category.dart';
 import 'package:mechfixes/Customer/mechanic_details_screen.dart';
 import 'package:mechfixes/Customer/mechanic_map_screen.dart';
 import 'package:mechfixes/Customer/mechanics_data.dart';
 import 'package:mechfixes/Customer/widgets/mechanic_rating_display.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
+import 'package:mechfixes/services/location_service.dart';
 import 'package:mechfixes/services/mechanics_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -24,15 +28,78 @@ class NearbyMechanicsScreen extends StatefulWidget {
 class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
   String selectedSort = "Distance";
   final MechanicsRepository _mechanicsRepository = MechanicsRepository.instance;
+  final LocationService _locationService = LocationService.instance;
 
-  List<Map<String, dynamic>> _sortMechanics(List<Map<String, dynamic>> mechanics) {
+  String _locationLabel = '';
+  bool _loadingLocation = true;
+  Position? _userPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveUserLocation();
+  }
+
+  Future<void> _resolveUserLocation() async {
+    setState(() => _loadingLocation = true);
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      if (!mounted) return;
+
+      if (position == null) {
+        setState(() {
+          _userPosition = null;
+          _locationLabel = AppText.of(
+            context,
+            english: 'Location unavailable — enable GPS',
+            romanUrdu: 'Location nahi mili — GPS on karein',
+          );
+          _loadingLocation = false;
+        });
+        return;
+      }
+
+      final address = await _locationService.reverseGeocode(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (!mounted) return;
+
+      final coords =
+          '${position.latitude.toStringAsFixed(5)}, '
+          '${position.longitude.toStringAsFixed(5)}';
+
+      setState(() {
+        _userPosition = position;
+        _locationLabel =
+            (address != null && address.trim().isNotEmpty) ? address : coords;
+        _loadingLocation = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _userPosition = null;
+        _locationLabel = AppText.of(
+          context,
+          english: 'Could not fetch location',
+          romanUrdu: 'Location hasil nahi hui',
+        );
+        _loadingLocation = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> _sortMechanics(
+    List<Map<String, dynamic>> mechanics,
+  ) {
     final sorted = List<Map<String, dynamic>>.from(mechanics);
 
     if (selectedSort == "Rating") {
       sorted.sort(
-        (a, b) => _readRatingString(b["rating"]).compareTo(
-          _readRatingString(a["rating"]),
-        ),
+        (a, b) => _readRatingString(
+          b["rating"],
+        ).compareTo(_readRatingString(a["rating"])),
       );
     } else {
       sorted.sort(
@@ -83,7 +150,15 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
     if (cleaned.isEmpty || cleaned == '+1 000 000 0000') {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Phone number not available')),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Phone number not available',
+              romanUrdu: 'Phone number mojood nahin',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -93,7 +168,15 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
       await launchUrl(uri);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch phone dialer')),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Could not launch phone dialer',
+              romanUrdu: 'Phone dialer nahin khul saka',
+            ),
+          ),
+        ),
       );
     }
   }
@@ -115,7 +198,7 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(
                           Icons.arrow_back_ios,
@@ -124,8 +207,12 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          "Back",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -135,7 +222,7 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.location_on_outlined,
@@ -144,8 +231,12 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        "Nearby Mechanics",
-                        style: TextStyle(
+                        AppText.of(
+                          context,
+                          english: 'Nearby Mechanics',
+                          romanUrdu: 'Qareebi Mechanics',
+                        ),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -153,6 +244,7 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                       ),
                     ],
                   ),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -183,7 +275,13 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    "Showing ${category.label} mechanics",
+                                    AppText.of(
+                                      context,
+                                      english:
+                                          'Showing ${category.label} mechanics',
+                                      romanUrdu:
+                                          '${category.label} ke mechanics dikhaye ja rahe hain',
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -197,7 +295,13 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                                 widget.issueDescription!.trim().isNotEmpty) ...[
                               const SizedBox(height: 6),
                               Text(
-                                "Issue: ${widget.issueDescription!.trim()}",
+                                AppText.of(
+                                  context,
+                                  english:
+                                      'Issue: ${widget.issueDescription!.trim()}',
+                                  romanUrdu:
+                                      'Masla: ${widget.issueDescription!.trim()}',
+                                ),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF475467),
@@ -205,9 +309,15 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                               ),
                             ],
                             const SizedBox(height: 4),
-                            const Text(
-                              "Multi-specialty shops appear when they cover this category.",
-                              style: TextStyle(
+                            Text(
+                              AppText.of(
+                                context,
+                                english:
+                                    'Multi-specialty shops appear when they cover this category.',
+                                romanUrdu:
+                                    'Is category ki service dene wali dukanein dikhayi jati hain.',
+                              ),
+                              style: const TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF667085),
                               ),
@@ -240,52 +350,85 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Your Location",
-                                  style: TextStyle(
+                                  AppText.of(
+                                    context,
+                                    english: 'Your Location',
+                                    romanUrdu: 'Aap ki Jagah',
+                                  ),
+                                  style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 11,
                                   ),
                                 ),
-                                SizedBox(height: 2),
-                                Text(
-                                  "San Francisco, CA 94102",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                const SizedBox(height: 2),
+                                if (_loadingLocation)
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.8,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        AppText.of(
+                                          context,
+                                          english: 'Detecting location…',
+                                          romanUrdu: 'Location dhoondh rahe hain…',
+                                        ),
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.9,
+                                          ),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else ...[
+                                  Text(
+                                    _locationLabel.isEmpty
+                                        ? AppText.of(
+                                            context,
+                                            english: 'Location not set',
+                                            romanUrdu: 'Location set nahi',
+                                          )
+                                        : _locationLabel,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.25,
+                                    ),
                                   ),
-                                ),
+                                  if (_userPosition != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${_userPosition!.latitude.toStringAsFixed(5)}, '
+                                      '${_userPosition!.longitude.toStringAsFixed(5)}',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ],
-                            ),
-                          ),
-                          SizedBox(
-                            height: 34,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.18,
-                                ),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text(
-                                "Change",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                              ),
                             ),
                           ),
                         ],
@@ -311,9 +454,13 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                             color: Color(0xFF667085),
                           ),
                           const SizedBox(width: 6),
-                          const Text(
-                            "Sort by:",
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english: 'Sort by:',
+                              romanUrdu: 'Tarteeb:',
+                            ),
+                            style: const TextStyle(
                               color: Color(0xFF667085),
                               fontSize: 13,
                             ),
@@ -335,14 +482,17 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                           debugPrint(
                             '[NearbyMechanics] Firebase not ready, using fallback data',
                           );
-                          final mechanics = _sortMechanics(_fallbackMechanics());
+                          final mechanics = _sortMechanics(
+                            _fallbackMechanics(),
+                          );
                           if (mechanics.isEmpty) {
                             return _emptyState(category);
                           }
                           return _mechanicsGrid(mechanics, category);
                         }
 
-                        if (snapshot.connectionState == ConnectionState.waiting &&
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
                             !snapshot.hasData) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 40),
@@ -365,8 +515,9 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                           );
                         }
 
-                        final mechanics =
-                            _sortMechanics(snapshot.data ?? const []);
+                        final mechanics = _sortMechanics(
+                          snapshot.data ?? const [],
+                        );
                         debugPrint(
                           '[NearbyMechanics] Rendering ${mechanics.length} mechanics',
                         );
@@ -406,7 +557,13 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            message ?? "No ${category?.label ?? ''} mechanics found nearby",
+            message ??
+                AppText.of(
+                  context,
+                  english: 'No ${category?.label ?? ''} mechanics found nearby',
+                  romanUrdu:
+                      'Qareeb koi ${category?.label ?? ''} mechanic nahin mila',
+                ),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 15,
@@ -415,13 +572,15 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            "Try browsing all nearby mechanics or check back later.",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF667085),
+          Text(
+            AppText.of(
+              context,
+              english: 'Try browsing all nearby mechanics or check back later.',
+              romanUrdu:
+                  'Tamam qareebi mechanics dekhein ya baad mein dobara check karein.',
             ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF667085)),
           ),
         ],
       ),
@@ -491,8 +650,9 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
     Map<String, dynamic> mechanic,
     IssueCategory? activeCategory,
   ) {
-    final specialties =
-        List<IssueCategory>.from(mechanic["specialties"] as List);
+    final specialties = List<IssueCategory>.from(
+      mechanic["specialties"] as List,
+    );
 
     final visibleSpecialties = specialties.take(2).toList();
     final hiddenSpecialtyCount = specialties.length - visibleSpecialties.length;
@@ -580,7 +740,8 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                                 runSpacing: 4,
                                 children: [
                                   ...visibleSpecialties.map((specialty) {
-                                    final isMatch = activeCategory != null &&
+                                    final isMatch =
+                                        activeCategory != null &&
                                         specialty == activeCategory;
 
                                     return _specialtyChip(
@@ -615,7 +776,7 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                       child: InkWell(
                         onTap: () => _openMapDirections(mechanic),
                         borderRadius: BorderRadius.circular(8),
-                        child: const SizedBox(
+                        child: SizedBox(
                           height: 40,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -627,8 +788,12 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                'Directions',
-                                style: TextStyle(
+                                AppText.of(
+                                  context,
+                                  english: 'Directions',
+                                  romanUrdu: 'Rasta',
+                                ),
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -671,10 +836,7 @@ class _NearbyMechanicsScreenState extends State<NearbyMechanicsScreen> {
     );
   }
 
-  Widget _specialtyChip({
-    required String label,
-    required bool isMatch,
-  }) {
+  Widget _specialtyChip({required String label, required bool isMatch}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(

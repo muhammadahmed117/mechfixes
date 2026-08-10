@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mechfixes/models/picked_location.dart';
 import 'package:mechfixes/services/location_service.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class MapLocationPickerScreen extends StatefulWidget {
-  const MapLocationPickerScreen({
-    super.key,
-    this.initialPosition,
-  });
+  const MapLocationPickerScreen({super.key, this.initialPosition});
 
   final LatLng? initialPosition;
 
@@ -99,7 +98,8 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
         PickedLocation(
           latitude: position.latitude,
           longitude: position.longitude,
-          address: address ??
+          address:
+              address ??
               '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
         ),
       );
@@ -115,8 +115,14 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
     if (currentPosition == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to access your current location'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Unable to access your current location',
+              romanUrdu: 'Aap ki current location access nahi ho saki',
+            ),
+          ),
         ),
       );
       return;
@@ -125,9 +131,7 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
     final target = LatLng(currentPosition.latitude, currentPosition.longitude);
     setState(() => _selectedPosition = target);
     await _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: target, zoom: 16),
-      ),
+      CameraUpdate.newCameraPosition(CameraPosition(target: target, zoom: 16)),
     );
     await _updatePreviewAddress(target);
   }
@@ -149,27 +153,47 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         SizedBox(width: 4),
-                        Text('Back', style: TextStyle(color: Colors.white)),
+                        Text(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    'Select Location',
-                    style: TextStyle(
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Select Location',
+                      romanUrdu: 'Location Select Karein',
+                    ),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
+                  const LanguageToggleButton(compact: true),
                   IconButton(
                     onPressed: _isLoading ? null : _moveToCurrentLocation,
                     icon: const Icon(Icons.my_location, color: Colors.white),
-                    tooltip: 'My location',
+                    tooltip: AppText.of(
+                      context,
+                      english: 'My location',
+                      romanUrdu: 'Meri location',
+                    ),
                   ),
                 ],
               ),
@@ -248,9 +272,14 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
-                            'Move the map or tap to place the pin',
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english: 'Move the map or tap to place the pin',
+                              romanUrdu:
+                                  'Map hilayein ya pin lagane ke liye tap karein',
+                            ),
+                            style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF101828),
@@ -258,7 +287,12 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            _previewAddress ?? 'Fetching address...',
+                            _previewAddress ??
+                                AppText.of(
+                                  context,
+                                  english: 'Fetching address...',
+                                  romanUrdu: 'Pata la rahe hain...',
+                                ),
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF667085),
@@ -270,7 +304,8 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
                             width: double.infinity,
                             height: 46,
                             child: ElevatedButton(
-                              onPressed: _isConfirming || selectedPosition == null
+                              onPressed:
+                                  _isConfirming || selectedPosition == null
                                   ? null
                                   : _confirmLocation,
                               style: ElevatedButton.styleFrom(
@@ -290,9 +325,13 @@ class _MapLocationPickerScreenState extends State<MapLocationPickerScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'Confirm Location',
-                                      style: TextStyle(
+                                  : Text(
+                                      AppText.of(
+                                        context,
+                                        english: 'Confirm Location',
+                                        romanUrdu: 'Location Confirm Karein',
+                                      ),
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),

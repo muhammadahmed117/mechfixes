@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class AdminRatingsScreen extends StatelessWidget {
   const AdminRatingsScreen({super.key});
@@ -19,7 +21,7 @@ class AdminRatingsScreen extends StatelessWidget {
           {"label": "3★", "value": 0.01},
           {"label": "2★", "value": 0.00},
           {"label": "1★", "value": 0.01},
-        ]
+        ],
       },
       {
         "name": "Master Tech Auto",
@@ -34,7 +36,7 @@ class AdminRatingsScreen extends StatelessWidget {
           {"label": "3★", "value": 0.01},
           {"label": "2★", "value": 0.00},
           {"label": "1★", "value": 0.01},
-        ]
+        ],
       },
       {
         "name": "Precision Motors",
@@ -49,7 +51,7 @@ class AdminRatingsScreen extends StatelessWidget {
           {"label": "3★", "value": 0.01},
           {"label": "2★", "value": 0.00},
           {"label": "1★", "value": 0.01},
-        ]
+        ],
       },
       {
         "name": "QuickFix Auto",
@@ -64,7 +66,7 @@ class AdminRatingsScreen extends StatelessWidget {
           {"label": "3★", "value": 0.01},
           {"label": "2★", "value": 0.00},
           {"label": "1★", "value": 0.01},
-        ]
+        ],
       },
     ];
 
@@ -80,14 +82,21 @@ class AdminRatingsScreen extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios,
-                            color: Colors.white, size: 14),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                         SizedBox(width: 2),
                         Text(
-                          "Back to Dashboard",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: "Back to Dashboard",
+                            romanUrdu: "Dashboard Par Wapas",
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -97,26 +106,35 @@ class AdminRatingsScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        "Ratings Overview",
-                        style: TextStyle(
+                        AppText.of(
+                          context,
+                          english: "Ratings Overview",
+                          romanUrdu: "Ratings Ka Jaiza",
+                        ),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        "All registered mechanics",
-                        style: TextStyle(
+                        AppText.of(
+                          context,
+                          english: "All registered mechanics",
+                          romanUrdu: "Tamam registered mechanics",
+                        ),
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 8,
                         ),
                       ),
                     ],
                   ),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -126,10 +144,14 @@ class AdminRatingsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Row(
-                      children: const [
+                      children: [
                         Expanded(
                           child: _TopStatCard(
-                            title: "Average Rating",
+                            title: AppText.of(
+                              context,
+                              english: "Average Rating",
+                              romanUrdu: "Ausat Rating",
+                            ),
                             value: "4.8",
                             trailingStar: true,
                             valueColor: Color(0xFF0F172A),
@@ -138,7 +160,11 @@ class AdminRatingsScreen extends StatelessWidget {
                         SizedBox(width: 8),
                         Expanded(
                           child: _TopStatCard(
-                            title: "Total Reviews",
+                            title: AppText.of(
+                              context,
+                              english: "Total Reviews",
+                              romanUrdu: "Kul Reviews",
+                            ),
                             value: "902",
                             valueColor: Color(0xFF0F172A),
                           ),
@@ -146,7 +172,11 @@ class AdminRatingsScreen extends StatelessWidget {
                         SizedBox(width: 8),
                         Expanded(
                           child: _TopStatCard(
-                            title: "Top Rated",
+                            title: AppText.of(
+                              context,
+                              english: "Top Rated",
+                              romanUrdu: "Behtareen Rated",
+                            ),
                             value: "2",
                             valueColor: Colors.green,
                           ),
@@ -154,7 +184,11 @@ class AdminRatingsScreen extends StatelessWidget {
                         SizedBox(width: 8),
                         Expanded(
                           child: _TopStatCard(
-                            title: "Needs Attention",
+                            title: AppText.of(
+                              context,
+                              english: "Needs Attention",
+                              romanUrdu: "Tawajjo Chahiye",
+                            ),
                             value: "0",
                             valueColor: Colors.orange,
                           ),
@@ -165,7 +199,9 @@ class AdminRatingsScreen extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 8),
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border: Border.all(color: const Color(0xFFD9E0EA)),
@@ -173,31 +209,53 @@ class AdminRatingsScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Text(
-                            "Sort by",
-                            style: TextStyle(
+                          Text(
+                            AppText.of(
+                              context,
+                              english: "Sort by",
+                              romanUrdu: "Tarteeb Dein",
+                            ),
+                            style: const TextStyle(
                               fontSize: 9,
                               color: Color(0xFF64748B),
                             ),
                           ),
                           const Spacer(),
-                          _sortButton("Highest Rating", true),
+                          _sortButton(
+                            AppText.of(
+                              context,
+                              english: "Highest Rating",
+                              romanUrdu: "Sab Se Achi Rating",
+                            ),
+                            true,
+                          ),
                           const SizedBox(width: 6),
-                          _sortButton("Most Reviews", false),
+                          _sortButton(
+                            AppText.of(
+                              context,
+                              english: "Most Reviews",
+                              romanUrdu: "Zyada Reviews",
+                            ),
+                            false,
+                          ),
                           const SizedBox(width: 6),
-                          _sortButton("Name", false),
+                          _sortButton(
+                            AppText.of(
+                              context,
+                              english: "Name",
+                              romanUrdu: "Naam",
+                            ),
+                            false,
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 10),
                     ...List.generate(
                       mechanics.length,
-                          (index) => Padding(
+                      (index) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: _ratingCard(
-                          index + 1,
-                          mechanics[index],
-                        ),
+                        child: _ratingCard(index + 1, mechanics[index]),
                       ),
                     ),
                   ],
@@ -301,8 +359,7 @@ class AdminRatingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      const Icon(Icons.star,
-                          color: Colors.amber, size: 14),
+                      const Icon(Icons.star, color: Colors.amber, size: 14),
                     ],
                   ),
                   Row(
@@ -321,7 +378,7 @@ class AdminRatingsScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ],
@@ -331,24 +388,18 @@ class AdminRatingsScreen extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               "Recent ratings",
-              style: TextStyle(
-                fontSize: 8,
-                color: Color(0xFF64748B),
-              ),
+              style: TextStyle(fontSize: 8, color: Color(0xFF64748B)),
             ),
           ),
           const SizedBox(height: 4),
           Row(
             children: List.generate(
               recent.length,
-                  (i) => Padding(
+              (i) => Padding(
                 padding: const EdgeInsets.only(right: 10),
                 child: Text(
                   recent[i],
-                  style: const TextStyle(
-                    fontSize: 8,
-                    color: Color(0xFF0F172A),
-                  ),
+                  style: const TextStyle(fontSize: 8, color: Color(0xFF0F172A)),
                 ),
               ),
             ),
@@ -359,7 +410,7 @@ class AdminRatingsScreen extends StatelessWidget {
           Row(
             children: List.generate(
               bars.length,
-                  (i) => Expanded(
+              (i) => Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(right: i == bars.length - 1 ? 0 : 4),
                   child: Column(
@@ -443,10 +494,7 @@ class _TopStatCard extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 8,
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(fontSize: 8, color: Color(0xFF64748B)),
           ),
           const Spacer(),
           Row(
@@ -462,7 +510,7 @@ class _TopStatCard extends StatelessWidget {
               if (trailingStar) ...[
                 const SizedBox(width: 2),
                 const Icon(Icons.star, color: Colors.amber, size: 13),
-              ]
+              ],
             ],
           ),
         ],

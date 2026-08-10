@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mechfixes/Admin/add_mechanic_dialog.dart';
 import 'package:mechfixes/Admin/admin_ratings_screen.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -44,13 +46,17 @@ class AdminHomeScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Admin Dashboard",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: "Admin Dashboard",
+                            romanUrdu: "Admin Dashboard",
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
@@ -58,17 +64,29 @@ class AdminHomeScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          "Manage Mechanics",
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          AppText.of(
+                            context,
+                            english: "Manage Mechanics",
+                            romanUrdu: "Mechanics Manage Karein",
+                          ),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Column(
                     children: [
+                      const LanguageToggleButton(compact: true),
                       _headerButton(
                         icon: Icons.bar_chart_outlined,
-                        title: "View Ratings",
+                        title: AppText.of(
+                          context,
+                          english: "View Ratings",
+                          romanUrdu: "Ratings Dekhein",
+                        ),
                         onTap: () {
                           Navigator.push(
                             context,
@@ -81,7 +99,11 @@ class AdminHomeScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _headerButton(
                         icon: Icons.logout,
-                        title: "Logout",
+                        title: AppText.of(
+                          context,
+                          english: "Logout",
+                          romanUrdu: "Logout",
+                        ),
                         onTap: () => Navigator.pop(context),
                       ),
                     ],
@@ -153,11 +175,15 @@ class AdminHomeScreen extends StatelessWidget {
                           border: Border.all(color: const Color(0xFFD7DDE8)),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const TextField(
+                        child: TextField(
                           decoration: InputDecoration(
                             border: InputBorder.none,
-                            hintText: "Search mechanics...",
-                            hintStyle: TextStyle(
+                            hintText: AppText.of(
+                              context,
+                              english: "Search mechanics...",
+                              romanUrdu: "Mechanics talash karein...",
+                            ),
+                            hintStyle: const TextStyle(
                               color: Color(0xFF8A94A6),
                               fontSize: 14,
                             ),
@@ -184,9 +210,13 @@ class AdminHomeScreen extends StatelessWidget {
                             );
                           },
                           icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text(
-                            "Add Mechanic",
-                            style: TextStyle(color: Colors.white),
+                          label: Text(
+                            AppText.of(
+                              context,
+                              english: "Add Mechanic",
+                              romanUrdu: "Mechanic Add Karein",
+                            ),
+                            style: const TextStyle(color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1F3FAF),
@@ -203,10 +233,14 @@ class AdminHomeScreen extends StatelessWidget {
 
                     // Stats cards
                     Row(
-                      children: const [
+                      children: [
                         Expanded(
                           child: _StatCard(
-                            title: "Total Mechanics",
+                            title: AppText.of(
+                              context,
+                              english: "Total Mechanics",
+                              romanUrdu: "Kul Mechanics",
+                            ),
                             value: "3",
                             valueColor: Color(0xFF0E1B4D),
                           ),
@@ -214,7 +248,11 @@ class AdminHomeScreen extends StatelessWidget {
                         SizedBox(width: 8),
                         Expanded(
                           child: _StatCard(
-                            title: "Active",
+                            title: AppText.of(
+                              context,
+                              english: "Active",
+                              romanUrdu: "Active",
+                            ),
                             value: "3",
                             valueColor: Colors.green,
                           ),
@@ -222,7 +260,11 @@ class AdminHomeScreen extends StatelessWidget {
                         SizedBox(width: 8),
                         Expanded(
                           child: _StatCard(
-                            title: "Average Rating",
+                            title: AppText.of(
+                              context,
+                              english: "Average Rating",
+                              romanUrdu: "Ausat Rating",
+                            ),
                             value: "4.8",
                             valueColor: Colors.orange,
                           ),

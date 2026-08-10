@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:mechfixes/core/localization/app_language_controller.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 import 'package:mechfixes/services/diagnostic_api_service.dart';
+import 'package:mechfixes/services/speech_output_service.dart';
+import 'package:mechfixes/services/voice_input_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AiDiagnosticScreen extends StatefulWidget {
   const AiDiagnosticScreen({super.key});
@@ -14,17 +20,27 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
       'Sorry, the AI mechanic is currently offline. Please check your connection.';
 
   final DiagnosticApiService _api = DiagnosticApiService();
+  final VoiceInputService _voice = VoiceInputService();
+  final SpeechOutputService _speechOut = SpeechOutputService();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   final FocusNode _inputFocus = FocusNode();
 
   bool _isLoading = false;
-  bool _showRomanUrdu = true;
+  bool _showRomanUrdu = false;
+  bool _isListening = false;
+  bool _isSpeaking = false;
+  String _voiceBaseText = '';
 
   @override
   void initState() {
     super.initState();
+    _showRomanUrdu = !AppLanguageController.instance.isEnglish;
+    _speechOut.onSpeakingChanged = (speaking) {
+      if (!mounted) return;
+      setState(() => _isSpeaking = speaking);
+    };
     _messages.add(
       const _ChatMessage.ai(
         predictedFault: null,
@@ -42,11 +58,122 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
 
   @override
   void dispose() {
+    _speechOut.dispose();
+    _voice.dispose();
     _inputController.dispose();
     _scrollController.dispose();
     _inputFocus.dispose();
     _api.dispose();
     super.dispose();
+  }
+
+  Future<void> _speakAdvice(String advice) async {
+    if (_isSpeaking) {
+      await _speechOut.stop();
+      return;
+    }
+    await _speechOut.speak(advice, romanUrdu: _showRomanUrdu);
+  }
+
+  Future<void> _toggleVoiceInput() async {
+    if (_isLoading) return;
+
+    if (_isListening) {
+      await _voice.stopListening();
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      return;
+    }
+
+    await _speechOut.stop();
+
+    final ready = await _voice.initialize(force: true);
+    if (!mounted) return;
+    if (!ready) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_voiceErrorMessage(context)),
+          action: _voice.lastFailure ==
+                  VoiceInputFailure.permissionPermanentlyDenied
+              ? SnackBarAction(
+                  label: 'Settings',
+                  onPressed: openAppSettings,
+                )
+              : null,
+        ),
+      );
+      return;
+    }
+
+    final localeId = AppText.isEnglishOf(context) ? 'en_US' : 'en_IN';
+    _voiceBaseText = _inputController.text.trim();
+    setState(() => _isListening = true);
+
+    final started = await _voice.startListening(
+      localeId: localeId,
+      onResult: (spoken) {
+        if (!mounted) return;
+        final combined = [
+          if (_voiceBaseText.isNotEmpty) _voiceBaseText,
+          if (spoken.trim().isNotEmpty) spoken.trim(),
+        ].join(' ');
+        _inputController.value = TextEditingValue(
+          text: combined,
+          selection: TextSelection.collapsed(offset: combined.length),
+        );
+        setState(() => _isListening = _voice.isListening);
+      },
+    );
+
+    if (!mounted) return;
+    if (!started) {
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_voiceErrorMessage(context))),
+      );
+    }
+  }
+
+  String _voiceErrorMessage(BuildContext context) {
+    switch (_voice.lastFailure) {
+      case VoiceInputFailure.permissionDenied:
+        return AppText.of(
+          context,
+          english: 'Please allow microphone permission to use voice input.',
+          romanUrdu: 'Voice ke liye microphone permission allow karein.',
+        );
+      case VoiceInputFailure.permissionPermanentlyDenied:
+        return AppText.of(
+          context,
+          english:
+              'Microphone permission is blocked. Enable it in app settings.',
+          romanUrdu:
+              'Microphone permission band hai. App settings mein enable karein.',
+        );
+      case VoiceInputFailure.pluginMissing:
+        return AppText.of(
+          context,
+          english:
+              'Voice plugin missing in this build. Install a fresh APK from flutter build apk.',
+          romanUrdu:
+              'Is APK mein voice plugin missing hai. Nayi APK build karke install karein.',
+        );
+      case VoiceInputFailure.unavailable:
+        return AppText.of(
+          context,
+          english:
+              'Speech recognition unavailable. Install Google app and enable Speech Services.',
+          romanUrdu:
+              'Speech recognition available nahi. Google app install karein aur Speech Services on karein.',
+        );
+      case VoiceInputFailure.unknown:
+      case VoiceInputFailure.none:
+        return AppText.of(
+          context,
+          english: 'Could not start voice listening. Please try again.',
+          romanUrdu: 'Voice listening shuru nahi ho saki. Dobara try karein.',
+        );
+    }
   }
 
   void _scrollToBottom() {
@@ -61,6 +188,11 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
   }
 
   Future<void> _sendMessage() async {
+    if (_isListening) {
+      await _voice.stopListening();
+      if (mounted) setState(() => _isListening = false);
+    }
+
     final text = _inputController.text.trim();
     if (text.isEmpty || _isLoading) return;
 
@@ -98,9 +230,11 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
       debugPrint('[AiDiagnostic] $stackTrace');
       if (!mounted) return;
       setState(() {
-        _messages.add(_ChatMessage.error(
-          error.toString().isNotEmpty ? error.toString() : _offlineMessage,
-        ));
+        _messages.add(
+          _ChatMessage.error(
+            error.toString().isNotEmpty ? error.toString() : _offlineMessage,
+          ),
+        );
         _isLoading = false;
       });
     }
@@ -110,46 +244,62 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _showRomanUrdu = !AppText.isEnglishOf(context);
     return Scaffold(
       backgroundColor: const Color(0xFFECEFF4),
       appBar: AppBar(
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Row(
+        title: Row(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 16,
               backgroundColor: Colors.white24,
-              child: Icon(Icons.smart_toy_outlined, size: 18, color: Colors.white),
+              child: Icon(
+                Icons.smart_toy_outlined,
+                size: 18,
+                color: Colors.white,
+              ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Mechanic',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  AppText.of(
+                    context,
+                    english: 'AI Mechanic',
+                    romanUrdu: 'AI Mechanic',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
-                  'Online • Diagnostic Assistant',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+                  _isListening
+                      ? AppText.of(
+                          context,
+                          english: 'Listening… speak now',
+                          romanUrdu: 'Sun raha hoon… ab bolein',
+                        )
+                      : AppText.of(
+                          context,
+                          english: 'Online • Diagnostic Assistant',
+                          romanUrdu: 'Online • Tashkheesi Madadgar',
+                        ),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: _isLoading
-                ? null
-                : () => setState(() => _showRomanUrdu = !_showRomanUrdu),
-            icon: const Icon(Icons.translate, color: Colors.white, size: 18),
-            label: Text(
-              _showRomanUrdu ? 'English' : 'Roman Urdu',
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ),
+          const LanguageToggleButton(),
         ],
       ),
       body: Column(
@@ -163,9 +313,15 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
                 if (_isLoading && index == _messages.length) {
                   return const _TypingBubble();
                 }
+                final message = _messages[index];
+                final advice = message.displayAdvice(showRomanUrdu: _showRomanUrdu);
                 return _MessageBubble(
-                  message: _messages[index],
+                  message: message,
                   showRomanUrdu: _showRomanUrdu,
+                  isSpeaking: _isSpeaking,
+                  onSpeak: message.kind == _MessageKind.ai
+                      ? () => _speakAdvice(advice)
+                      : null,
                 );
               },
             ),
@@ -174,7 +330,9 @@ class _AiDiagnosticScreenState extends State<AiDiagnosticScreen> {
             controller: _inputController,
             focusNode: _inputFocus,
             isLoading: _isLoading,
+            isListening: _isListening,
             onSend: _sendMessage,
+            onToggleVoice: _toggleVoiceInput,
           ),
         ],
       ),
@@ -196,22 +354,22 @@ class _ChatMessage {
   });
 
   const _ChatMessage.user(String text)
-      : this._(kind: _MessageKind.user, text: text);
+    : this._(kind: _MessageKind.user, text: text);
 
   const _ChatMessage.ai({
     required String? predictedFault,
     required String adviceEnglish,
     required String adviceRomanUrdu,
   }) : this._(
-          kind: _MessageKind.ai,
-          text: adviceEnglish,
-          predictedFault: predictedFault,
-          adviceEnglish: adviceEnglish,
-          adviceRomanUrdu: adviceRomanUrdu,
-        );
+         kind: _MessageKind.ai,
+         text: adviceEnglish,
+         predictedFault: predictedFault,
+         adviceEnglish: adviceEnglish,
+         adviceRomanUrdu: adviceRomanUrdu,
+       );
 
   const _ChatMessage.error(String text)
-      : this._(kind: _MessageKind.error, text: text);
+    : this._(kind: _MessageKind.error, text: text);
 
   final _MessageKind kind;
   final String text;
@@ -226,9 +384,13 @@ class _ChatMessage {
     final english = adviceEnglish?.trim() ?? '';
 
     if (showRomanUrdu) {
-      return romanUrdu.isNotEmpty ? romanUrdu : (english.isNotEmpty ? english : text);
+      return romanUrdu.isNotEmpty
+          ? romanUrdu
+          : (english.isNotEmpty ? english : text);
     }
-    return english.isNotEmpty ? english : (romanUrdu.isNotEmpty ? romanUrdu : text);
+    return english.isNotEmpty
+        ? english
+        : (romanUrdu.isNotEmpty ? romanUrdu : text);
   }
 }
 
@@ -238,10 +400,14 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble({
     required this.message,
     required this.showRomanUrdu,
+    this.isSpeaking = false,
+    this.onSpeak,
   });
 
   final _ChatMessage message;
   final bool showRomanUrdu;
+  final bool isSpeaking;
+  final VoidCallback? onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -251,8 +417,8 @@ class _MessageBubble extends StatelessWidget {
     final bubbleColor = isUser
         ? const Color(0xFF1F3FAF)
         : isError
-            ? const Color(0xFFFFEBEE)
-            : Colors.white;
+        ? const Color(0xFFFFEBEE)
+        : Colors.white;
 
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final borderRadius = BorderRadius.only(
@@ -273,9 +439,7 @@ class _MessageBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: bubbleColor,
           borderRadius: borderRadius,
-          border: isError
-              ? Border.all(color: const Color(0xFFFFCDD2))
-              : null,
+          border: isError ? Border.all(color: const Color(0xFFFFCDD2)) : null,
           boxShadow: isUser
               ? null
               : [
@@ -296,32 +460,34 @@ class _MessageBubble extends StatelessWidget {
                 ),
               )
             : isError
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.wifi_off_rounded,
-                        size: 18,
-                        color: Color(0xFFC62828),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          message.text,
-                          style: const TextStyle(
-                            color: Color(0xFFC62828),
-                            fontSize: 14,
-                            height: 1.45,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : _AiBubbleContent(
-                    predictedFault: message.predictedFault,
-                    advice: message.displayAdvice(showRomanUrdu: showRomanUrdu),
-                    languageLabel: showRomanUrdu ? 'Roman Urdu' : 'English',
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    size: 18,
+                    color: Color(0xFFC62828),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      message.text,
+                      style: const TextStyle(
+                        color: Color(0xFFC62828),
+                        fontSize: 14,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : _AiBubbleContent(
+                predictedFault: message.predictedFault,
+                advice: message.displayAdvice(showRomanUrdu: showRomanUrdu),
+                languageLabel: showRomanUrdu ? 'Roman Urdu' : 'English',
+                isSpeaking: isSpeaking,
+                onSpeak: onSpeak,
+              ),
       ),
     );
   }
@@ -332,11 +498,15 @@ class _AiBubbleContent extends StatelessWidget {
     required this.predictedFault,
     required this.advice,
     required this.languageLabel,
+    this.isSpeaking = false,
+    this.onSpeak,
   });
 
   final String? predictedFault;
   final String advice;
   final String languageLabel;
+  final bool isSpeaking;
+  final VoidCallback? onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -353,14 +523,20 @@ class _AiBubbleContent extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFE8EDFA),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF1F3FAF).withValues(alpha: 0.2)),
+              border: Border.all(
+                color: const Color(0xFF1F3FAF).withValues(alpha: 0.2),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Predicted Fault',
-                  style: TextStyle(
+                Text(
+                  AppText.of(
+                    context,
+                    english: 'Predicted Fault',
+                    romanUrdu: 'Predicted Fault',
+                  ),
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF64748B),
@@ -382,7 +558,11 @@ class _AiBubbleContent extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Repair Advice ($languageLabel)',
+            AppText.of(
+              context,
+              english: 'Repair Advice ($languageLabel)',
+              romanUrdu: 'Repair Advice ($languageLabel)',
+            ),
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -400,6 +580,36 @@ class _AiBubbleContent extends StatelessWidget {
             height: 1.5,
           ),
         ),
+        if (onSpeak != null) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onSpeak,
+              icon: Icon(
+                isSpeaking ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
+                size: 18,
+              ),
+              label: Text(
+                isSpeaking
+                    ? AppText.of(
+                        context,
+                        english: 'Stop',
+                        romanUrdu: 'Rokain',
+                      )
+                    : AppText.of(
+                        context,
+                        english: 'Speak',
+                        romanUrdu: 'Sunain',
+                      ),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF1F3FAF),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -503,13 +713,17 @@ class _ChatInputBar extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.isLoading,
+    required this.isListening,
     required this.onSend,
+    required this.onToggleVoice,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool isLoading;
+  final bool isListening;
   final VoidCallback onSend;
+  final VoidCallback onToggleVoice;
 
   @override
   Widget build(BuildContext context) {
@@ -521,62 +735,123 @@ class _ChatInputBar extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  enabled: !isLoading,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSend(),
-                  decoration: InputDecoration(
-                    hintText: 'Describe your car symptoms…',
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF98A2B3),
-                      fontSize: 14,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF5F6F8),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: const Color(0xFF1F3FAF),
-                borderRadius: BorderRadius.circular(24),
-                child: InkWell(
-                  onTap: isLoading ? null : onSend,
-                  borderRadius: BorderRadius.circular(24),
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: isLoading
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.send_rounded,
-                            color: Colors.white,
-                            size: 22,
+              if (isListening)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.mic, color: Color(0xFFC62828), size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          AppText.of(
+                            context,
+                            english: 'Listening… tap mic again to stop',
+                            romanUrdu: 'Sun raha hoon… rokne ke liye mic dubara dabayein',
                           ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFC62828),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Material(
+                    color: isListening
+                        ? const Color(0xFFFFEBEE)
+                        : const Color(0xFFF5F6F8),
+                    borderRadius: BorderRadius.circular(24),
+                    child: InkWell(
+                      onTap: isLoading ? null : onToggleVoice,
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Icon(
+                          isListening ? Icons.mic : Icons.mic_none_rounded,
+                          color: isListening
+                              ? const Color(0xFFC62828)
+                              : const Color(0xFF1F3FAF),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      enabled: !isLoading,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => onSend(),
+                      decoration: InputDecoration(
+                        hintText: isListening
+                            ? AppText.of(
+                                context,
+                                english: 'Speak your car symptoms…',
+                                romanUrdu: 'Apni gaari ki alamat bolein…',
+                              )
+                            : AppText.of(
+                                context,
+                                english: 'Describe your car symptoms…',
+                                romanUrdu: 'Apni gaari ki alamat likhein…',
+                              ),
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF98A2B3),
+                          fontSize: 14,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF5F6F8),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: const Color(0xFF1F3FAF),
+                    borderRadius: BorderRadius.circular(24),
+                    child: InkWell(
+                      onTap: isLoading ? null : onSend,
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: isLoading
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

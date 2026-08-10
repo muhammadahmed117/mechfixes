@@ -2,14 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mechfixes/chat/screens/chat_screen.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class MechanicInboxScreen extends StatelessWidget {
   const MechanicInboxScreen({super.key});
 
-  String _resolveReceiverName(
-    dynamic participantNames,
-    String receiverId,
-  ) {
+  String _resolveReceiverName(dynamic participantNames, String receiverId) {
     if (participantNames is Map) {
       final direct = participantNames[receiverId];
       if (direct is String && direct.trim().isNotEmpty) {
@@ -75,13 +74,14 @@ class MechanicInboxScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF212936),
         elevation: 0,
-        title: const Text(
-          'Messages',
-          style: TextStyle(
+        title: Text(
+          AppText.of(context, english: 'Messages', romanUrdu: 'Paighamaat'),
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: const [LanguageToggleButton(compact: true)],
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
@@ -91,9 +91,7 @@ class MechanicInboxScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF3B82F6),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
             );
           }
 
@@ -101,7 +99,7 @@ class MechanicInboxScreen extends StatelessWidget {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(
                     Icons.chat_bubble_outline_rounded,
                     size: 46,
@@ -109,8 +107,12 @@ class MechanicInboxScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'No messages yet.',
-                    style: TextStyle(
+                    AppText.of(
+                      context,
+                      english: 'No messages yet.',
+                      romanUrdu: 'Abhi koi paigham nahi.',
+                    ),
+                    style: const TextStyle(
                       color: Color(0xFF667085),
                       fontSize: 14,
                     ),
@@ -137,7 +139,7 @@ class MechanicInboxScreen extends StatelessWidget {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(
                     Icons.chat_bubble_outline_rounded,
                     size: 46,
@@ -145,8 +147,12 @@ class MechanicInboxScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'No messages yet.',
-                    style: TextStyle(
+                    AppText.of(
+                      context,
+                      english: 'No messages yet.',
+                      romanUrdu: 'Abhi koi paigham nahi.',
+                    ),
+                    style: const TextStyle(
                       color: Color(0xFF667085),
                       fontSize: 14,
                     ),
@@ -178,11 +184,14 @@ class MechanicInboxScreen extends StatelessWidget {
 
               final lastMessage =
                   (data['lastMessage'] as String?)?.trim().isNotEmpty == true
-                      ? data['lastMessage'] as String
-                      : 'No messages yet';
+                  ? data['lastMessage'] as String
+                  : AppText.of(
+                      context,
+                      english: 'No messages yet',
+                      romanUrdu: 'Abhi koi paigham nahi',
+                    );
 
-              final lastMessageTime =
-                  data['lastMessageTime'] as Timestamp?;
+              final lastMessageTime = data['lastMessageTime'] as Timestamp?;
 
               return Card(
                 elevation: 0,

@@ -92,6 +92,19 @@ class MechanicAuthService {
         );
       }
 
+      final mechanicDoc =
+          await _db.collection(mechanicsCollection).doc(user.uid).get();
+      if (!mechanicDoc.exists) {
+        final userDoc = await _db.collection('users').doc(user.uid).get();
+        await _auth.signOut();
+        throw FirebaseAuthException(
+          code: 'wrong-role',
+          message: userDoc.exists
+              ? 'This email is registered as a customer. Use User sign in.'
+              : 'No mechanic account found for this email.',
+        );
+      }
+
       final profile = await _loadOrCreateMechanicProfile(
         uid: user.uid,
         email: user.email ?? email.trim(),
@@ -158,7 +171,11 @@ class MechanicAuthService {
     await _db
         .collection(mechanicsCollection)
         .doc(uid)
-        .set(profile.toFirestore(includeDefaults: true), SetOptions(merge: true));
+        .set({
+          ...profile.toFirestore(includeDefaults: true),
+          'status': 'pending',
+          'isVerified': false,
+        }, SetOptions(merge: true));
 
     return profile;
   }

@@ -1,0 +1,511 @@
+================================================================================
+                    MECHFIXES APP — FULL WORKING EXPLANATION
+                         (Roman English / Roman Urdu)
+================================================================================
+Project: Mechfixes (Flutter + Firebase + FastAPI AI Backend)
+Folder:  D:\Mechfixes
+Date:    August 2026
+
+Yeh document app ki poori working, piping (flow), Firebase, aur APIs explain
+karta hai simple Roman English mein.
+
+
+================================================================================
+1) APP KYA HAI?
+================================================================================
+
+Mechfixes aik multi-role app hai:
+
+  1) CUSTOMER (User)  — masla bataye, AI se diagnosis le, qareebi mechanic dhunday
+  2) MECHANIC         — shop profile banaye, customers se chat/reviews handle kare
+  3) ADMIN            — mechanics approve/reject, users block, complaints manage
+
+Tech stack:
+  - Frontend: Flutter (Dart)
+  - Backend Auth + Database: Firebase (Auth + Firestore)
+  - AI Server: Python FastAPI (local PC pe chalta hai)
+  - Maps: Google Maps + Directions API
+  - Voice: speech_to_text + flutter_tts
+
+
+================================================================================
+2) APP START HONE KA FLOW (PIPELINE)
+================================================================================
+
+File: lib/main.dart
+
+  Step 1: Flutter start → Firebase.initializeApp()
+  Step 2: Language load (English / Roman Urdu SharedPreferences se)
+  Step 3: home = AuthGate()
+
+AuthGate (lib/core/navigation/auth_gate.dart) check karta hai:
+
+  Agar user LOGIN NAHI:
+      → WelcomeScreen (Get Started / Sign In)
+
+  Agar user LOGIN HAI:
+      → pehle check: admins/{uid} hai?
+            HAAN → Admin Dashboard
+      → warna check: users/{uid} hai?
+            HAAN → Customer Home
+      → warna check: mechanics/{uid} hai?
+            - shopName khali → Mechanic Profile Onboarding
+            - isVerified false / rejected → Pending Approval screen
+            - verified → Mechanic Dashboard
+      → kuch bhi na mile → signOut → WelcomeScreen
+
+Matlab: app band karke dubara open karo to session save rehti hai aur seedha
+dashboard pe chali jati hai (Logout dabane pe hi login chahiye).
+
+
+================================================================================
+3) LOGIN / SIGNUP PIPELINE
+================================================================================
+
+Files:
+  - lib/welcome_screen.dart
+  - lib/login_screen.dart
+  - lib/create_account.dart
+  - lib/services/auth_service.dart
+  - lib/services/mechanic_auth_service.dart
+
+3.1) Toggle: USER  |  MECHANIC
+
+Login screen pe User / Mechanic choose hota hai.
+
+IMPORTANT:
+  Firebase Auth mein EK email = EK Auth account.
+  Role Firestore documents se decide hota hai:
+    - users/{uid}     = customer
+    - mechanics/{uid} = mechanic
+    - admins/{uid}    = admin
+
+3.2) Role lock (galat tab pe login nahi)
+
+  User tab pe mechanic wali Gmail daalo:
+    → error: "This email is registered as a mechanic..."
+
+  Mechanic tab pe customer wali Gmail:
+    → error: "This email is registered as a customer..."
+
+  Admin email kisi bhi tab se chal sakti hai → Admin Portal khul jati hai
+  (kyunke admins/{uid} pehle check hota hai).
+
+3.3) Customer signup
+  Auth create → Firestore users/{uid} with:
+    email, fullName, role=user, createdAt
+  → Customer Home
+
+3.4) Mechanic signup
+  Auth create → Firestore mechanics/{uid} with:
+    isVerified=false, status=pending, ...
+  → Profile onboarding (shop, phone, address, map pin, specialties)
+  → Pending Approval screen (dashboard tabhi jab admin approve kare)
+
+
+================================================================================
+4) FIREBASE — FULL DETAIL
+================================================================================
+
+4.1) Firebase Auth
+  - Email + password login/signup
+  - Session device pe persist hoti hai
+  - google_sign_in package pubspec mein hai, lekin main flow email/password hai
+
+4.2) Firestore Collections
+
+  -------------------- users/{uid} --------------------
+  Customer profile
+  Fields (examples):
+    email, fullName, role, phone, status, isBlocked, adminNote, createdAt
+
+  -------------------- mechanics/{uid} --------------------
+  Mechanic shop profile
+  Fields (examples):
+    email, fullName, shopName, phone, address/location
+    latitude, longitude, geoPoint
+    specialties, selectedSkills
+    isVerified, status (pending | approved | rejected)
+    adminNote, isDemo
+    rating, reviewCount
+    openingDays, openingHours, imageUrl
+    createdAt, updatedAt
+
+  -------------------- admins/{uid} --------------------
+  Sirf document exist karna = yeh user ADMIN hai
+  (uid Firebase Auth user ki same honi chahiye)
+
+  -------------------- reviews/{reviewId} --------------------
+  Customer mechanic ko rating/review deta hai
+  Mechanic rating/reviewCount update hota hai
+
+  -------------------- complaints/{complaintId} --------------------
+  Reports: userName, userEmail, mechanicName, issue, status (open/resolved)
+  Admin resolve/reopen karta hai
+  NOTE: Admin UI ready hai; customer-side "file complaint" form abhi app mein
+        fully wired nahi (future ke liye rules create allow karti hain)
+
+  -------------------- chats/{chatId}/messages/{messageId} --------------------
+  Customer ↔ Mechanic chat
+  chatId format: customerId__mechanicId
+  participants array se access control
+
+
+4.3) Firestore Rules (firestore.rules) — security
+
+  function isAdmin():
+    request.auth != null AND admins/{uid} document exists
+
+  Mechanics:
+    - Owner apna profile create/update/delete kar sakta hai
+    - Rating/reviewCount update allowed (reviews ke liye)
+    - Admin sirf yeh fields change kar sakta hai:
+        status, isVerified, adminNote, updatedAt
+
+  Users:
+    - Self read/write
+    - Admin sirf: status, isBlocked, adminNote, updatedAt
+    - Delete nahi
+
+  Complaints:
+    - Auth user create/read
+    - Admin update limited fields (status, resolvedAt, adminNote, updatedAt)
+
+  Chats:
+    - Sirf participants read/write kar sakte hain
+
+Yeh soft-status model hai: Auth account delete nahi hota; status se control.
+
+
+================================================================================
+5) CUSTOMER SIDE — KAISE KAAM KARTA HAI
+================================================================================
+
+File base: lib/Customer/
+
+5.1) Customer Home (customer_home_screen.dart)
+  - Categories: Mechanical, Tyres & Wheels, Electrical
+  - Top / nearby mechanics list (verified only)
+  - AI Diagnostic card / FAB
+  - Profile + Logout
+  - Language toggle
+
+5.2) Issue screens
+  - mechanical_issues_screen.dart
+  - tyres_wheel_issues_screen.dart
+  - electrical_issues_screen.dart
+  User issue choose karta hai → Nearby Mechanics pe category filter ke sath jata hai
+
+5.3) Nearby Mechanics (nearby_mechanics_screen.dart)
+  - GPS se user location reverse-geocode (exact address + lat/lng)
+  - MechanicsRepository se verified mechanics load
+  - Sort: Distance / Rating
+  - Directions → MechanicMapScreen
+  - Call → tel: launcher
+
+5.4) Mechanic Map + Directions (mechanic_map_screen.dart)
+  - Google Map markers (user + mechanic)
+  - DirectionsService driving route polyline
+  - ~5 km radius nearby mechanics (GoogleMapsConfig)
+  - Start Navigation → Google Maps app / browser
+
+5.5) AI Diagnostic (ai_diagnostic_screen.dart)
+  - User symptoms type / mic se bolta hai (speech_to_text)
+  - DiagnosticApiService → FastAPI /api/diagnose
+  - Response: predicted fault + English advice + Roman Urdu advice
+  - Speak button (flutter_tts)
+
+5.6) Chat
+  - contact_mechanic_sheet → ChatScreen
+  - Firestore chats + messages
+  - Text messages, location request support
+
+5.7) Ratings & Reviews
+  - ratings_reviews_screen.dart
+  - reviews collection + mechanic rating aggregate update
+
+
+================================================================================
+6) MECHANIC SIDE — KAISE KAAM KARTA HAI
+================================================================================
+
+File base: lib/Mechanic/
+
+PIPELINE:
+
+  [Sign Up as Mechanic]
+        ↓
+  Firebase Auth account + mechanics/{uid} (pending, isVerified=false)
+        ↓
+  [Profile Onboarding]
+  shopName, phone, address, map pin, specialties/skills
+        ↓
+  [Pending Approval Screen]
+  "Admin approval ka wait"
+        ↓
+  Admin Portal → Approve
+        ↓
+  isVerified=true, status=approved
+        ↓
+  [Mechanic Dashboard]
+  customers ko dikhega + inbox/reviews/profile edit
+
+Agar Admin Reject:
+  status=rejected, adminNote save → Rejected screen
+
+Agar Admin Unverify:
+  wapas pending → customers se hide
+
+Dashboard features:
+  - Profile edit
+  - Skills/services
+  - Reviews reply/delete
+  - Inbox (chats)
+
+
+================================================================================
+7) ADMIN PORTAL — KAISE KAAM KARTA HAI
+================================================================================
+
+File: lib/Admin/admin_dashboard_screen.dart
+Widgets: lib/Admin/widgets/*
+Validators: lib/core/admin/admin_validators.dart
+
+Login: koi bhi tab (User/Mechanic) se admin email → Admin Dashboard
+(kyunke admins/{uid} check pehle hota hai)
+
+Header:
+  - Search (sab tabs pe)
+  - Stats: Pending, Verified, Users, Open Complaints
+  - Language + Logout
+
+Tabs:
+
+  1) PENDING
+     - Incomplete/unverified pending mechanics
+     - Approve (confirm) / Reject (reason required)
+     - Details sheet
+
+  2) MECHANICS
+     - Filter: All / Verified / Rejected
+     - Sort: Rating / Recent
+     - Unverify, Reject, Re-open, Email, Call
+
+  3) USERS
+     - Filter: All / Active / Blocked
+     - Block (reason) / Unblock
+     - Details
+
+  4) COMPLAINTS
+     - Open / Resolved
+     - Resolve / Reopen
+     - Contact reporter
+
+Security:
+  Soft status only (Auth hard-delete nahi)
+  Firestore rules field-limited admin writes
+  Double-submit locks on actions
+
+
+================================================================================
+8) AI BACKEND (FastAPI) — FULL PIPELINE
+================================================================================
+
+Folder: ai_backend/
+
+Files:
+  main.py          → FastAPI routes
+  config.py        → model paths, Groq settings
+  train_model.py   → ML + RAG artifacts train
+  .env             → GROQ_API_KEY etc. (local secret)
+  start_server.bat → uvicorn start
+
+Server:
+  uvicorn → http://0.0.0.0:8000
+
+APIs:
+  GET  /health
+  POST /api/diagnose
+       body: { "symptoms": "engine overheating..." }
+       response:
+         predicted_fault
+         ai_advice_english
+         ai_advice_roman_urdu
+
+Working pipeline:
+  1) Flutter symptoms bhejta hai HTTP POST se
+  2) Backend sklearn model se fault predict
+  3) RAG (FAISS) + Groq LLM se bilingual advice
+  4) Flutter UI pe English + Roman Urdu dikhata hai
+
+Flutter URL config:
+  lib/core/config/diagnostic_api_config.dart
+
+  Emulator debug:  http://10.0.2.2:8000/api/diagnose
+  Real phone APK:  http://YOUR_PC_LAN_IP:8000/api/diagnose
+                   (pcLanIp config mein set karo, e.g. 192.168.x.x)
+  Override:        --dart-define=DIAGNOSE_URL=...
+
+Zaroori:
+  - PC aur phone same WiFi
+  - FastAPI server chal raha ho
+  - Android cleartext traffic allowed (AndroidManifest)
+
+
+================================================================================
+9) GOOGLE MAPS / LOCATION / DIRECTIONS
+================================================================================
+
+Config:
+  lib/core/config/google_maps_config.dart   → Directions API key (Dart)
+  android/.../AndroidManifest.xml          → Maps SDK Android key
+  web/index.html                           → Maps JavaScript API (web ke liye)
+
+Services:
+  location_service.dart    → GPS + reverse geocode + distance
+  directions_service.dart  → Google Directions JSON → polyline points
+
+Packages:
+  google_maps_flutter
+  flutter_polyline_points
+  geolocator
+  geocoding
+  url_launcher
+
+NOTE (Web vs Mobile):
+  Chrome/Web pe Maps JS script chahiye (warna MapTypeId error).
+  Android pe native Maps SDK — woh JS error nahi aati.
+
+
+================================================================================
+10) VOICE (AI SCREEN)
+================================================================================
+
+  speech_to_text     → mic se symptoms (VoiceInputService)
+  flutter_tts        → advice sunao (SpeechOutputService)
+  permission_handler → RECORD_AUDIO permission
+
+Android pe full rebuild chahiye (hot restart se plugins kabhi miss ho jate).
+Chrome pe mic plugin missing ho sakta hai — real device better.
+
+
+================================================================================
+11) LOCALIZATION (ENGLISH / ROMAN URDU)
+================================================================================
+
+Files:
+  lib/core/localization/app_language_controller.dart
+  lib/core/localization/app_text.dart
+  lib/core/localization/language_toggle_button.dart
+
+Working:
+  - AppLanguage.english / AppLanguage.romanUrdu
+  - SharedPreferences mein save
+  - AppText.of(context, english: '...', romanUrdu: '...')
+  - Toggle header pe har major screen pe
+
+
+================================================================================
+12) CUSTOMER VISIBILITY RULE (MECHANIC DIKHNE KA RULE)
+================================================================================
+
+MechanicRecord.isCustomerVisible tab true jab:
+  - isDemo == false
+  - status rejected NAHI
+  - profile complete (shopName + phone + address)
+  - isVerified == true   ← ADMIN APPROVE zaroori
+
+Is liye pending mechanic customers ko Nearby/Home pe nahi dikhta.
+
+
+================================================================================
+13) END-TO-END EXAMPLE PIPELINES
+================================================================================
+
+A) Customer journey
+  Welcome → Sign Up User → Home → Issue choose → Nearby Mechanics
+  → Map/Directions OR Chat OR Call → Review
+
+B) Mechanic journey
+  Welcome → Sign Up Mechanic → Fill profile → Wait admin
+  → Admin Approve → Dashboard → Inbox/Reviews
+
+C) Admin journey
+  Login (admin email) → Admin Portal
+  → Pending Approve/Reject
+  → Users Block/Unblock
+  → Complaints Resolve
+
+D) AI journey
+  Home → AI Diagnostic → type/speak symptoms
+  → POST /api/diagnose → bilingual advice → Speak
+
+
+================================================================================
+14) IMPORTANT FILES INDEX
+================================================================================
+
+ENTRY / AUTH
+  lib/main.dart
+  lib/core/navigation/auth_gate.dart
+  lib/core/navigation/auth_navigation.dart
+  lib/welcome_screen.dart
+  lib/login_screen.dart
+  lib/create_account.dart
+  lib/services/auth_service.dart
+  lib/services/mechanic_auth_service.dart
+
+CUSTOMER
+  lib/Customer/customer_home_screen.dart
+  lib/Customer/nearby_mechanics_screen.dart
+  lib/Customer/mechanic_map_screen.dart
+  lib/Customer/ai_diagnostic_screen.dart
+  lib/Customer/ratings_reviews_screen.dart
+  lib/services/mechanics_repository.dart
+  lib/services/diagnostic_api_service.dart
+  lib/services/directions_service.dart
+  lib/services/location_service.dart
+
+MECHANIC
+  lib/Mechanic/mechanic_dashboard_screen.dart
+  lib/Mechanic/mechanic_profile_edit_screen.dart
+  lib/Mechanic/mechanic_pending_approval_screen.dart
+  lib/Mechanic/mechanic_inbox_screen.dart
+
+ADMIN
+  lib/Admin/admin_dashboard_screen.dart
+  lib/Admin/widgets/*
+  lib/core/admin/admin_validators.dart
+
+CHAT
+  lib/chat/**
+
+CONFIG
+  lib/core/config/diagnostic_api_config.dart
+  lib/core/config/google_maps_config.dart
+  lib/firebase_options.dart
+  firestore.rules
+  android/app/src/main/AndroidManifest.xml
+  web/index.html
+
+AI BACKEND
+  ai_backend/main.py
+  ai_backend/config.py
+  ai_backend/train_model.py
+
+
+================================================================================
+15) SHORT SUMMARY (1 MINUTE READ)
+================================================================================
+
+Mechfixes Flutter app hai jo Firebase Auth/Firestore se 3 roles handle karti hai.
+Customer AI se diagnosis leta hai (FastAPI + Groq) aur Google Maps se qareebi
+verified mechanics dhundta hai. Mechanic signup ke baad admin approve kare
+tabhi customers ko dikhta hai. Admin soft-status se approve/reject/block/
+complaints manage karta hai. Language English + Roman Urdu hai. Session
+persist hoti hai taake app band/open pe dubara login na lage (Logout ke
+siwa).
+
+================================================================================
+                         END OF DOCUMENT
+================================================================================

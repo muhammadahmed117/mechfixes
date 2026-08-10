@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mechfixes/Customer/issue_category.dart';
 import 'package:mechfixes/Customer/nearby_mechanics_screen.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class MechanicalIssuesScreen extends StatefulWidget {
   const MechanicalIssuesScreen({super.key});
 
   @override
-  State<MechanicalIssuesScreen> createState() =>
-      _MechanicalIssuesScreenState();
+  State<MechanicalIssuesScreen> createState() => _MechanicalIssuesScreenState();
 }
 
 class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
@@ -15,6 +16,18 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
   final GlobalKey _guidanceKey = GlobalKey();
 
   int? selectedIssueIndex;
+
+  String _romanIssue(String issue) {
+    const translations = {
+      'Engine won\'t start': 'Engine start nahin ho raha',
+      'Strange engine noise': 'Engine se ajeeb awaaz',
+      'Transmission slipping': 'Transmission slip kar rahi hai',
+      'Oil leak detected': 'Oil leak mila hai',
+      'Overheating engine': 'Engine zyada garam ho raha hai',
+      'Check engine light on': 'Check engine light jal rahi hai',
+    };
+    return translations[issue] ?? issue;
+  }
 
   final List<String> issues = [
     "Engine won't start",
@@ -99,7 +112,15 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
   void _findMechanics() {
     if (issueController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your issue")),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Please enter your issue',
+              romanUrdu: 'Apna masla likhein',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -137,14 +158,21 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios,
-                            color: Colors.white, size: 16),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         SizedBox(width: 4),
                         Text(
-                          "Back",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
                           ),
@@ -153,14 +181,20 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Text(
-                    "Mechanical Issues",
-                    style: TextStyle(
+                  Text(
+                    AppText.of(
+                      context,
+                      english: 'Mechanical Issues',
+                      romanUrdu: 'Mechanical Masail',
+                    ),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const Spacer(),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -174,35 +208,49 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                       controller: issueController,
                       onChanged: (_) {
                         if (selectedIssueIndex != null &&
-                            issueController.text != issues[selectedIssueIndex!]) {
+                            issueController.text !=
+                                issues[selectedIssueIndex!]) {
                           setState(() {
                             selectedIssueIndex = null;
                           });
                         }
                       },
                       decoration: InputDecoration(
-                        hintText: "Describe your issue in detail...",
+                        hintText: AppText.of(
+                          context,
+                          english: 'Describe your issue in detail...',
+                          romanUrdu: 'Apna masla tafseel se likhein...',
+                        ),
                         prefixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 18),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 18,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD0D5DD)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD0D5DD),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide:
-                              const BorderSide(color: Color(0xFFD0D5DD)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD0D5DD),
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      "Be as specific as possible for accurate diagnosis",
-                      style: TextStyle(
+                    Text(
+                      AppText.of(
+                        context,
+                        english:
+                            'Be as specific as possible for accurate diagnosis',
+                        romanUrdu:
+                            'Sahi tashkhees ke liye jitni tafseel ho sake likhein',
+                      ),
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF475467),
                       ),
@@ -218,14 +266,20 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.info_outline,
-                                  color: Color(0xFF1F3FAF)),
+                              Icon(
+                                Icons.info_outline,
+                                color: Color(0xFF1F3FAF),
+                              ),
                               SizedBox(width: 8),
                               Text(
-                                "Common Mechanical Issues",
-                                style: TextStyle(
+                                AppText.of(
+                                  context,
+                                  english: 'Common Mechanical Issues',
+                                  romanUrdu: 'Aam Mechanical Masail',
+                                ),
+                                style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -239,11 +293,11 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                             itemCount: issues.length,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 5,
-                              crossAxisSpacing: 5,
-                              childAspectRatio: 2.5,
-                            ),
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 5,
+                                  crossAxisSpacing: 5,
+                                  childAspectRatio: 2.5,
+                                ),
                             itemBuilder: (context, index) {
                               final isSelected = selectedIssueIndex == index;
 
@@ -269,7 +323,11 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                                     ),
                                   ),
                                   child: Text(
-                                    issues[index],
+                                    AppText.of(
+                                      context,
+                                      english: issues[index],
+                                      romanUrdu: _romanIssue(issues[index]),
+                                    ),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13,
@@ -316,8 +374,9 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                                         height: 32,
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFEAF0FF),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.build_circle_outlined,
@@ -331,9 +390,15 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            const Text(
-                                              "DIY Guidance / Quick Fixes",
-                                              style: TextStyle(
+                                            Text(
+                                              AppText.of(
+                                                context,
+                                                english:
+                                                    'DIY Guidance / Quick Fixes',
+                                                romanUrdu:
+                                                    'Khud Karne Ki Rehnumai / Fori Hal',
+                                              ),
+                                              style: const TextStyle(
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w600,
                                                 color: Color(0xFF101828),
@@ -341,7 +406,13 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              selectedIssue,
+                                              AppText.of(
+                                                context,
+                                                english: selectedIssue,
+                                                romanUrdu: _romanIssue(
+                                                  selectedIssue,
+                                                ),
+                                              ),
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Color(0xFF667085),
@@ -412,9 +483,16 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
-                          "Find Mechanics for This Issue",
-                          style: TextStyle(fontSize: 15, color: Colors.white),
+                        child: Text(
+                          AppText.of(
+                            context,
+                            english: 'Find Mechanics for This Issue',
+                            romanUrdu: 'Is Maslay Ke Liye Mechanic Dhundhein',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -425,9 +503,15 @@ class _MechanicalIssuesScreenState extends State<MechanicalIssuesScreen> {
                         color: const Color(0xFFEAF0FF),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        "Tip: Click on a common issue to auto-fill, or type your own description for a custom diagnosis.",
-                        style: TextStyle(
+                      child: Text(
+                        AppText.of(
+                          context,
+                          english:
+                              'Tip: Click on a common issue to auto-fill, or type your own description for a custom diagnosis.',
+                          romanUrdu:
+                              'Mashwara: Aam maslay ko chunein ya apni tafseel likhein.',
+                        ),
+                        style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF1F3FAF),
                         ),

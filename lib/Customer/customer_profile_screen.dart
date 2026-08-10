@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mechfixes/core/navigation/auth_navigation.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({super.key});
@@ -31,8 +33,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   Future<void> _fetchUserData() async {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -47,8 +51,14 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to load profile data.'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Failed to load profile data.',
+              romanUrdu: 'Profile data load nahin ho saka.',
+            ),
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -76,16 +86,28 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Profile updated successfully',
+              romanUrdu: 'Profile kamyabi se update ho gaya',
+            ),
+          ),
           backgroundColor: Color(0xFF1FAB5D),
         ),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save profile. Please try again.'),
+        SnackBar(
+          content: Text(
+            AppText.of(
+              context,
+              english: 'Failed to save profile. Please try again.',
+              romanUrdu: 'Profile save nahin hua. Dobara koshish karein.',
+            ),
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -184,10 +206,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
-  Widget _textField(
-    TextEditingController controller, {
-    bool readOnly = false,
-  }) {
+  Widget _textField(TextEditingController controller, {bool readOnly = false}) {
     return TextField(
       controller: controller,
       readOnly: readOnly,
@@ -215,14 +234,21 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios,
-                            color: Colors.white, size: 14),
+                        Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                         SizedBox(width: 4),
                         Text(
-                          "Back",
-                          style: TextStyle(
+                          AppText.of(
+                            context,
+                            english: 'Back',
+                            romanUrdu: 'Wapas',
+                          ),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -232,14 +258,21 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.settings_outlined,
-                          color: Colors.white, size: 14),
+                      Icon(
+                        Icons.settings_outlined,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                       SizedBox(width: 4),
                       Text(
-                        "Profile Settings",
-                        style: TextStyle(
+                        AppText.of(
+                          context,
+                          english: 'Profile Settings',
+                          romanUrdu: 'Profile Settings',
+                        ),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -247,6 +280,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       ),
                     ],
                   ),
+                  const LanguageToggleButton(compact: true),
                 ],
               ),
             ),
@@ -263,7 +297,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         children: [
                           _sectionCard(
                             icon: Icons.person_outline,
-                            title: "Personal Information",
+                            title: AppText.of(
+                              context,
+                              english: 'Personal Information',
+                              romanUrdu: 'Zati Maloomat',
+                            ),
                             child: Column(
                               children: [
                                 Row(
@@ -273,7 +311,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _label("Full Name"),
+                                          _label(
+                                            AppText.of(
+                                              context,
+                                              english: 'Full Name',
+                                              romanUrdu: 'Pura Naam',
+                                            ),
+                                          ),
                                           _textField(nameController),
                                         ],
                                       ),
@@ -284,7 +328,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _label("Email Address"),
+                                          _label(
+                                            AppText.of(
+                                              context,
+                                              english: 'Email Address',
+                                              romanUrdu: 'Email Pata',
+                                            ),
+                                          ),
                                           _textField(
                                             emailController,
                                             readOnly: true,
@@ -298,7 +348,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _label("Phone Number"),
+                                    _label(
+                                      AppText.of(
+                                        context,
+                                        english: 'Phone Number',
+                                        romanUrdu: 'Phone Number',
+                                      ),
+                                    ),
                                     _textField(phoneController),
                                   ],
                                 ),
@@ -308,7 +364,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                           const SizedBox(height: 14),
                           _sectionCard(
                             icon: Icons.directions_car_outlined,
-                            title: "Vehicle Information",
+                            title: AppText.of(
+                              context,
+                              english: 'Vehicle Information',
+                              romanUrdu: 'Gaari Ki Maloomat',
+                            ),
                             child: Column(
                               children: [
                                 Row(
@@ -318,7 +378,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _label("Make"),
+                                          _label(
+                                            AppText.of(
+                                              context,
+                                              english: 'Make',
+                                              romanUrdu: 'Company',
+                                            ),
+                                          ),
                                           _textField(makeController),
                                         ],
                                       ),
@@ -329,7 +395,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _label("Model"),
+                                          _label(
+                                            AppText.of(
+                                              context,
+                                              english: 'Model',
+                                              romanUrdu: 'Model',
+                                            ),
+                                          ),
                                           _textField(modelController),
                                         ],
                                       ),
@@ -340,7 +412,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _label("Year"),
+                                          _label(
+                                            AppText.of(
+                                              context,
+                                              english: 'Year',
+                                              romanUrdu: 'Saal',
+                                            ),
+                                          ),
                                           _textField(yearController),
                                         ],
                                       ),
@@ -351,7 +429,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _label("VIN Number"),
+                                    _label(
+                                      AppText.of(
+                                        context,
+                                        english: 'VIN Number',
+                                        romanUrdu: 'VIN Number',
+                                      ),
+                                    ),
                                     _textField(vinController),
                                   ],
                                 ),
@@ -366,12 +450,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                 child: SizedBox(
                                   height: 48,
                                   child: ElevatedButton(
-                                    onPressed:
-                                        isSaving ? null : _saveChanges,
+                                    onPressed: isSaving ? null : _saveChanges,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF1F3FAF),
-                                      disabledBackgroundColor:
-                                          const Color(0xFFBFD0FF),
+                                      disabledBackgroundColor: const Color(
+                                        0xFFBFD0FF,
+                                      ),
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
@@ -386,9 +470,14 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                               color: Colors.white,
                                             ),
                                           )
-                                        : const Text(
-                                            "Save Changes",
-                                            style: TextStyle(
+                                        : Text(
+                                            AppText.of(
+                                              context,
+                                              english: 'Save Changes',
+                                              romanUrdu:
+                                                  'Tabdeeliyan Save Karein',
+                                            ),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 13,
                                               fontWeight: FontWeight.w600,
@@ -411,21 +500,27 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                       size: 15,
                                       color: Color(0xFF667085),
                                     ),
-                                    label: const Text(
-                                      "Logout",
-                                      style: TextStyle(
+                                    label: Text(
+                                      AppText.of(
+                                        context,
+                                        english: 'Logout',
+                                        romanUrdu: 'Logout',
+                                      ),
+                                      style: const TextStyle(
                                         color: Color(0xFF667085),
                                         fontSize: 12,
                                       ),
                                     ),
                                     style: OutlinedButton.styleFrom(
                                       side: const BorderSide(
-                                          color: Color(0xFFD5DDEA)),
+                                        color: Color(0xFFD5DDEA),
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 8),
+                                        horizontal: 8,
+                                      ),
                                     ),
                                   ),
                                 ),

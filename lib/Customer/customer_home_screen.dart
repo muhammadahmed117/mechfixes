@@ -7,6 +7,8 @@ import 'package:mechfixes/Customer/mechanic_details_screen.dart';
 import 'package:mechfixes/Customer/nearby_mechanics_screen.dart';
 import 'package:mechfixes/Customer/tyres_wheel_issues_screen.dart';
 import 'package:mechfixes/Customer/widgets/mechanic_rating_display.dart';
+import 'package:mechfixes/core/localization/app_text.dart';
+import 'package:mechfixes/core/localization/language_toggle_button.dart';
 import 'package:mechfixes/core/navigation/auth_navigation.dart';
 import 'package:mechfixes/data/models/mechanic_record.dart';
 import 'package:mechfixes/services/mechanics_repository.dart';
@@ -29,23 +31,47 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final _searchCtrl = TextEditingController();
   final MechanicsRepository _mechanicsRepository = MechanicsRepository.instance;
 
-  final List<Map<String, dynamic>> _categories = [
-    {
-      'title': 'Mechanical',
-      'subtitle': 'Engine, transmission, and mechanical issues',
-      'icon': Icons.settings_outlined,
-    },
-    {
-      'title': 'Tyres & Wheels',
-      'subtitle': 'Tire wear, alignment, and wheel problems',
-      'icon': Icons.directions_car_outlined,
-    },
-    {
-      'title': 'Electrical',
-      'subtitle': 'Battery, lights, and electrical systems',
-      'icon': Icons.flash_on_outlined,
-    },
-  ];
+  List<Map<String, dynamic>> _localizedCategories(BuildContext context) => [
+        {
+          'title': AppText.of(
+            context,
+            english: 'Mechanical',
+            romanUrdu: 'Mechanical',
+          ),
+          'subtitle': AppText.of(
+            context,
+            english: 'Engine, transmission, and mechanical issues',
+            romanUrdu: 'Engine, transmission, aur mechanical maslay',
+          ),
+          'icon': Icons.settings_outlined,
+        },
+        {
+          'title': AppText.of(
+            context,
+            english: 'Tyres & Wheels',
+            romanUrdu: 'Tyres & Wheels',
+          ),
+          'subtitle': AppText.of(
+            context,
+            english: 'Tire wear, alignment, and wheel problems',
+            romanUrdu: 'Tire wear, alignment, aur wheel ke maslay',
+          ),
+          'icon': Icons.directions_car_outlined,
+        },
+        {
+          'title': AppText.of(
+            context,
+            english: 'Electrical',
+            romanUrdu: 'Electrical',
+          ),
+          'subtitle': AppText.of(
+            context,
+            english: 'Battery, lights, and electrical systems',
+            romanUrdu: 'Battery, lights, aur electrical systems',
+          ),
+          'icon': Icons.flash_on_outlined,
+        },
+      ];
 
   @override
   void dispose() {
@@ -119,6 +145,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final categories = _localizedCategories(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6F8),
       floatingActionButton: FloatingActionButton.extended(
@@ -129,9 +157,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         backgroundColor: _primary,
         elevation: 4,
         icon: const Icon(Icons.smart_toy_outlined, color: Colors.white),
-        label: const Text(
-          'AI Mechanic',
-          style: TextStyle(
+        label: Text(
+          AppText.of(
+            context,
+            english: 'AI Mechanic',
+            romanUrdu: 'AI Mechanic',
+          ),
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
@@ -144,13 +176,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             Container(
               width: double.infinity,
               height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               color: _primary,
               child: Row(
                 children: [
                   Container(
-                    width: 30,
-                    height: 30,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -162,29 +194,32 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
-                    'Mechfixes',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'AI Mechanic',
-                    icon: const Icon(Icons.smart_toy_outlined,
-                        color: Colors.white, size: 20),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AiDiagnosticScreen(),
+                  const Expanded(
+                    child: Text(
+                      'Mechfixes',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ),
+                  const LanguageToggleButton(compact: true),
                   IconButton(
-                    tooltip: 'Profile',
-                    icon: const Icon(Icons.person_outline, color: Colors.white, size: 20),
+                    tooltip: AppText.of(
+                      context,
+                      english: 'Profile',
+                      romanUrdu: 'Profile',
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.person_outline,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -193,8 +228,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Logout',
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                    tooltip: AppText.of(
+                      context,
+                      english: 'Logout',
+                      romanUrdu: 'Logout',
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     onPressed: () => logoutToLogin(context),
                   ),
                 ],
@@ -211,19 +255,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Page title ──
-                    const Text(
-                      "What's the issue?",
-                      style: TextStyle(
+                    Text(
+                      AppText.of(
+                        context,
+                        english: "What's the issue?",
+                        romanUrdu: 'Masla kya hai?',
+                      ),
+                      style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF0F172A),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Select a category or search for a mechanic below.',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF475467)),
+                    Text(
+                      AppText.of(
+                        context,
+                        english:
+                            'Select a category or search for a mechanic below.',
+                        romanUrdu:
+                            'Category select karein ya neeche mechanic search karein.',
+                      ),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF475467),
+                      ),
                     ),
                     const SizedBox(height: 24),
 
@@ -243,7 +299,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF1F3FAF), Color(0xFF3B5BDB)],
+                              colors: [
+                                Color(0xFF1F3FAF),
+                                Color(0xFF3B5BDB),
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
@@ -269,22 +328,32 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 14),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'AI Car Diagnostic',
-                                      style: TextStyle(
+                                      AppText.of(
+                                        context,
+                                        english: 'AI Car Diagnostic',
+                                        romanUrdu: 'AI Car Diagnostic',
+                                      ),
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      'Describe symptoms — get instant fault prediction & DIY advice',
-                                      style: TextStyle(
+                                      AppText.of(
+                                        context,
+                                        english:
+                                            'Describe symptoms — get instant fault prediction & DIY advice',
+                                        romanUrdu:
+                                            'Symptoms batayein — foran fault prediction aur DIY advice hasil karein',
+                                      ),
+                                      style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 13,
                                         height: 1.35,
@@ -311,14 +380,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         if (constraints.maxWidth > 800) {
                           return Row(
                             children: List.generate(
-                              _categories.length,
+                              categories.length,
                               (i) => Expanded(
                                 child: Padding(
                                   padding: EdgeInsets.only(
-                                    right: i == _categories.length - 1 ? 0 : 16,
+                                    right:
+                                        i == categories.length - 1 ? 0 : 16,
                                   ),
                                   child: _CategoryCard(
-                                    item: _categories[i],
+                                    item: categories[i],
                                     isSelected: _selectedCategory == i,
                                     onTap: () => _onCategoryTap(i),
                                   ),
@@ -329,11 +399,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         }
                         return Column(
                           children: List.generate(
-                            _categories.length,
+                            categories.length,
                             (i) => Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: _CategoryCard(
-                                item: _categories[i],
+                                item: categories[i],
                                 isSelected: _selectedCategory == i,
                                 onTap: () => _onCategoryTap(i),
                               ),
@@ -361,11 +431,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        icon: const Icon(Icons.map_outlined,
-                            color: _primary, size: 18),
-                        label: const Text(
-                          'Find Mechanics Nearby',
-                          style: TextStyle(
+                        icon: const Icon(
+                          Icons.map_outlined,
+                          color: _primary,
+                          size: 18,
+                        ),
+                        label: Text(
+                          AppText.of(
+                            context,
+                            english: 'Find Mechanics Nearby',
+                            romanUrdu: 'Qareebi Mechanics Dhoondein',
+                          ),
+                          style: const TextStyle(
                             color: _primary,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -376,9 +453,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     const SizedBox(height: 30),
 
                     // ── Section header ──
-                    const Text(
-                      'Find a Mechanic',
-                      style: TextStyle(
+                    Text(
+                      AppText.of(
+                        context,
+                        english: 'Find a Mechanic',
+                        romanUrdu: 'Mechanic Dhoondein',
+                      ),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF101828),
@@ -389,19 +470,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     // ── Search bar ──
                     TextField(
                       controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _searchQuery = v.trim()),
+                      onChanged: (v) =>
+                          setState(() => _searchQuery = v.trim()),
                       decoration: InputDecoration(
-                        hintText: 'Search by name or specialization…',
+                        hintText: AppText.of(
+                          context,
+                          english: 'Search by name or specialization…',
+                          romanUrdu:
+                              'Naam ya specialization se search karein…',
+                        ),
                         hintStyle: const TextStyle(
                           color: Color(0xFF98A2B3),
                           fontSize: 14,
                         ),
-                        prefixIcon: const Icon(Icons.search,
-                            color: Color(0xFF98A2B3), size: 20),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF98A2B3),
+                          size: 20,
+                        ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.close,
-                                    size: 18, color: Color(0xFF98A2B3)),
+                                icon: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: Color(0xFF98A2B3),
+                                ),
                                 onPressed: () {
                                   _searchCtrl.clear();
                                   setState(() => _searchQuery = '');
@@ -421,8 +514,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: _primary, width: 1.5),
+                          borderSide: const BorderSide(
+                            color: _primary,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                     ),
@@ -432,12 +527,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     StreamBuilder<List<MechanicRecord>>(
                       stream: _mechanicsRepository.watchVerifiedMechanics(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting &&
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
                             !snapshot.hasData) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 40),
                             child: Center(
-                              child: CircularProgressIndicator(color: _primary),
+                              child: CircularProgressIndicator(
+                                color: _primary,
+                              ),
                             ),
                           );
                         }
@@ -448,20 +546,29 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           );
                           return _InfoTile(
                             icon: Icons.error_outline,
-                            message: 'Could not load mechanics.',
+                            message: AppText.of(
+                              context,
+                              english: 'Could not load mechanics.',
+                              romanUrdu: 'Mechanics load nahi ho sake.',
+                            ),
                             color: Colors.redAccent,
                           );
                         }
 
-                        final processed =
-                            _processMechanics(snapshot.data ?? const []);
+                        final processed = _processMechanics(
+                          snapshot.data ?? const [],
+                        );
                         final filtered = _filter(processed);
 
                         if (filtered.isEmpty) {
-                          return const _InfoTile(
+                          return _InfoTile(
                             icon: Icons.engineering_outlined,
-                            message: 'No mechanics found nearby.',
-                            color: Color(0xFF98A2B3),
+                            message: AppText.of(
+                              context,
+                              english: 'No mechanics found nearby.',
+                              romanUrdu: 'Qareeb koi mechanic nahi mila.',
+                            ),
+                            color: const Color(0xFF98A2B3),
                           );
                         }
 

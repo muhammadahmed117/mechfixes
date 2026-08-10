@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mechfixes/login_screen.dart';
+import 'package:mechfixes/services/auth_service.dart';
 import 'package:mechfixes/services/mechanic_auth_service.dart';
 
 Future<void> logoutToLogin(BuildContext context) async {
   await MechanicAuthService.instance.signOut();
+  await AuthService.instance.signOut();
 
   if (!context.mounted) return;
 

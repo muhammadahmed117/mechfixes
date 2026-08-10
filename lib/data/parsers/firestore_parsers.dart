@@ -52,6 +52,7 @@ class FirestoreParsers {
     Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     T Function(QueryDocumentSnapshot<Map<String, dynamic>> doc) parse, {
     required String logLabel,
+    bool logSuccess = false,
   }) {
     final results = <T>[];
     var failures = 0;
@@ -66,10 +67,12 @@ class FirestoreParsers {
       }
     }
 
-    debugPrint(
-      '[$logLabel] Loaded ${results.length}/${docs.length} documents '
-      '(failures: $failures)',
-    );
+    if (failures > 0 || logSuccess) {
+      debugPrint(
+        '[$logLabel] Loaded ${results.length}/${docs.length} documents '
+        '(failures: $failures)',
+      );
+    }
 
     return results;
   }
