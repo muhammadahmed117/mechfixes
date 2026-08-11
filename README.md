@@ -24,8 +24,8 @@ The app is designed for vehicle repair coordination, showing nearby verified mec
 - Mechanic onboarding and admin verification workflow
 - Google Maps integration for mechanic location, routing, and nearby mechanic display
 - Distance-aware mechanic selection using a 5km (5000m) radius filter
-- Directions API route drawing and travel distance estimation
-- Local fallback route calculation when Directions API is unavailable
+- Google Maps route drawing and travel distance estimation
+- Local fallback route calculation when Google Maps directions are unavailable
 - Multilingual UI support with English and Roman Urdu text
 - Voice input using device microphone
 - Text-to-speech playback for AI diagnostic advice
@@ -36,7 +36,7 @@ The app is designed for vehicle repair coordination, showing nearby verified mec
 - Python FastAPI server exposing `/health` and `/api/diagnose`
 - Trained ML classification pipeline using TF-IDF + RandomForest
 - Local RAG vector store built with FAISS and HuggingFace embeddings
-- Groq Chat model integration for bilingual AI advice generation
+- Groq chat model integration for bilingual AI advice generation
 - Bilingual output parsing into `[ENGLISH]` and `[ROMAN_URDU]` sections
 - Graceful error handling for model loading, prediction, and AI generation
 
@@ -71,10 +71,10 @@ The app is designed for vehicle repair coordination, showing nearby verified mec
   - Local RAG index saved with FAISS
   - Local trained ML artifact saved with joblib
 
-- Third-Party APIs
-  - Google Maps Directions API
-  - Groq AI model API
-  - Local HuggingFace embeddings for FAISS vectorization
+- Third-Party Services
+  - Google Maps
+  - Groq
+  - HuggingFace embeddings for FAISS vectorization
 
 ## 📁 Folder Structure
 
@@ -257,10 +257,10 @@ flutter build apk --release
 
 ## ✅ Production Notes
 
-- Replace hardcoded API keys before publishing
+- Replace hardcoded keys before publishing
 - Keep `GROQ_API_KEY` private
 - Use Firebase rules to secure Firestore collections
-- Verify device network access for the backend API
+- Verify device network access for the backend
 - Ensure `ai_backend` is reachable from device via local LAN IP if using a phone
 
 ## 🌱 Future Scope / To-Do
