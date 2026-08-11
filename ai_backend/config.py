@@ -16,8 +16,8 @@ CSV_PATH = Path(
 ML_MODEL_PATH = Path(os.getenv("ML_MODEL_PATH", BASE_DIR / "artifacts" / "ml_model.pkl"))
 RAG_DB_PATH = Path(os.getenv("RAG_DB_PATH", BASE_DIR / "artifacts" / "rag_db"))
 
-# Groq API key (hardcoded for local Windows dev — do not commit to public repos)
-GROQ_API_KEY = "gsk_8ErhT1tgic9qRJuv2v5GWGdyb3FYIKkLaiX2AOot46P0ObRNSD2o7"
+# Groq API key is loaded from the environment for security.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 # Local HuggingFace embeddings for FAISS (no API key required)

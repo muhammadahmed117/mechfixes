@@ -47,7 +47,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDjhW-1js11hbdDCpXBqDov5OzD6gF6_Oo',
+    apiKey: '*****',
     appId: '1:1010810302873:web:10e6fafabc15c39b2e6308',
     messagingSenderId: '1010810302873',
     projectId: 'mechfixes-app-2026',
@@ -56,7 +56,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDleXM64T_oDdeW83VCxYrqcj8fzzxuF-c',
+    apiKey: '*****',
     appId: '1:1010810302873:android:483d6f1c5a8b45762e6308',
     messagingSenderId: '1010810302873',
     projectId: 'mechfixes-app-2026',
@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyA-j4j5bxl3y8Cxiyl1hjcWYhauuTiEppE',
+    apiKey: '*****',
     appId: '1:1010810302873:ios:571622dfaf345bf42e6308',
     messagingSenderId: '1010810302873',
     projectId: 'mechfixes-app-2026',

@@ -8,7 +8,7 @@ class DiagnosticApiConfig {
   static const int port = 8000;
 
   /// Update this when testing APK on a real phone (same Wi-Fi as PC).
-  static const String pcLanIp = '192.168.1.8';
+  static const String pcLanIp = 'YOUR_PC_LAN_IP';
 
   /// Prefer physical-device LAN URL in release APK; emulator URL in debug.
   static String get diagnoseUrl {

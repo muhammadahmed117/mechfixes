@@ -2,7 +2,7 @@
 class GoogleMapsConfig {
   GoogleMapsConfig._();
 
-  static const String apiKey = 'AIzaSyC6boLtcXo9iJY2dJzmK5JtFd7paG0pPkA';
+  static const String apiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
 
   static const String directionsBaseUrl =
       'https://maps.googleapis.com/maps/api/directions/json';
