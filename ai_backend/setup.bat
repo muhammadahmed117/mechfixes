@@ -52,9 +52,7 @@ echo  Setup complete!
 echo ============================================
 echo.
 echo Next steps:
-echo   1. Copy .env.example to .env and add OPENAI_API_KEY
-echo   2. Put your CSV in the data\ folder
-echo   3. Run: train_model.bat
-echo   4. Run: start_server.bat
+echo   1. Copy .env.example to .env and add GROQ_API_KEY
+echo   2. Run: start_server.bat
 echo.
 pause

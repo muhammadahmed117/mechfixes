@@ -8,9 +8,8 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-if not exist "artifacts\ml_model.pkl" (
-    echo [WARNING] ML model not found. Run train_model.bat first.
-    echo Server may return errors until training is done.
+if not exist ".env" (
+    echo [WARNING] .env not found. Copy .env.example to .env and set GROQ_API_KEY.
     echo.
 )
 
