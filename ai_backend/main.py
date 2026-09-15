@@ -102,9 +102,9 @@ def _create_groq_llm() -> ChatGroq:
         )
 
     return ChatGroq(
-        model_name=GROQ_MODEL,
+        model=GROQ_MODEL,
         temperature=0.6,
-        groq_api_key=GROQ_API_KEY,
+        api_key=GROQ_API_KEY,
     )
 
 
@@ -293,6 +293,18 @@ class HealthResponse(BaseModel):
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
+
+
+@app.get("/")
+async def root() -> dict[str, Any]:
+    """Landing page for browsers hitting the API base URL."""
+    return {
+        "service": "Mechfixes AI Diagnostic API",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health",
+        "diagnose": "POST /api/diagnose",
+    }
 
 
 @app.get("/health", response_model=HealthResponse)
