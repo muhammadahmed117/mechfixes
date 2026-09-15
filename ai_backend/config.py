@@ -12,4 +12,4 @@ load_dotenv(BASE_DIR / ".env", override=True)
 
 # Groq API — required for /api/diagnose
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
